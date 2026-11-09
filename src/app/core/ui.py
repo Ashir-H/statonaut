@@ -4,6 +4,8 @@ from typing import Iterable, Optional, Sequence, Tuple
 
 import streamlit as st
 
+from .library import ContentError
+
 CSS = """
 <style>
 .block-container {padding-top: 2.1rem;}
@@ -52,6 +54,15 @@ CSS = """
 def inject() -> None:
     """Called once per page, since every rerun starts from the entry script."""
     st.markdown(CSS, unsafe_allow_html=True)
+
+
+def from_content(fetch, *args) -> None:
+    """Draw a content file. A missing file or heading becomes a note on the
+    page naming the file, rather than a traceback."""
+    try:
+        st.markdown(fetch(*args))
+    except ContentError as exc:
+        st.warning(f"Content needs attention: {exc}")
 
 
 def page_header(topic_line: str, title: str, caption: str = "") -> None:

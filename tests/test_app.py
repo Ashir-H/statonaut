@@ -172,14 +172,14 @@ for kind in views.KIND_NAMES:
 
 # 7. every bank question renders and marks
 at = open_page(*_find("papers"))
-for item in content.BANK:
+for item in content.questions():
     at.selectbox(key="bank_choice").set_value(item["id"]).run()
     complain(f"bank {item['id']}", at)
     submit = [b for b in at.button if "Mark my answer" in str(b.label)]
     if submit:
         submit[0].click().run()
         complain(f"bank {item['id']} submit", at)
-print(f"bank: {len(content.BANK)} questions rendered and marked")
+print(f"bank: {len(content.questions())} questions rendered and marked")
 
 print()
 if problems:

@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import streamlit as st
 
 from app.core import scoring, ui
+from app.core.library import ContentError
 
 from . import content, engine, generate, table
 from .engine import (ACCEPT, R_GROUP_FULL, R_IN_RANGE, R_OUT_OF_RANGE,
@@ -246,12 +247,12 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                     sh.working(population, q["n"]) for sh in result.shares))
 
     with st.expander("What the mark scheme rewards"):
-        if q["kind"] in content.METHODS:
-            st.markdown(content.METHODS[q["kind"]]["marks"])
+        if q["kind"] in content.METHOD_KINDS:
+            ui.from_content(content.method_section, q["kind"], content.MARKS)
         elif q["kind"] == "interval":
-            st.markdown(content.INTERVAL_MARKS)
+            ui.from_content(content.text, content.INTERVAL_MARKS)
         else:
-            st.markdown(content.REPRESENTATIVE)
+            ui.from_content(content.text, content.REPRESENTATIVE)
         if note:
             st.markdown(f"**About this question.** {note}")
 
@@ -264,45 +265,63 @@ def page_learn() -> None:
     ui.page_header(TOPIC_LINE, "How it is done")
     tabs = st.tabs(["Reading the table", "Simple random", "Systematic", "Stratified",
                     "Representative?", "In the exam"])
+    try:
+        bank = content.questions()
+    except ContentError as exc:
+        bank = []
+        st.warning(f"Content needs attention: {exc}")
+
+    def example_for(kind):
+        return next((q for q in bank if q["kind"] == kind), None)
+
     with tabs[0]:
-        st.markdown(content.READING)
-        st.caption("Worked through: 60 students numbered 01 to 60, reading row 1.")
-        table.printed_row(content.ROW1)
-        result = engine.simple_random(content.ROW1, 1, 60, 5)
-        table.walkthrough(result, content.ROW1, 2)
-        st.markdown("**The sample**")
-        table.sample_chips(result.sample, 2)
-    for i, kind in enumerate(TABLE_KINDS, start=1):
+        ui.from_content(content.text, content.READING)
+        example = example_for("simple")
+        if example:
+            st.caption(f"Worked through: {example['setting']}")
+            table.printed_row(example["row"])
+            result = solve(example)
+            table.walkthrough(result, example["row"], read_width(example))
+            st.markdown("**The sample**")
+            table.sample_chips(result.sample, result.width)
+
+    for i, kind in enumerate(content.METHOD_KINDS, start=1):
         with tabs[i]:
-            m = content.METHODS[kind]
-            st.subheader(m["title"])
-            st.markdown(m["idea"])
+            try:
+                doc = content.method(kind)
+            except ContentError as exc:
+                st.warning(f"Content needs attention: {exc}")
+                continue
+            st.subheader(doc.title or KIND_NAMES[kind])
+            ui.from_content(doc.section, content.IDEA)
             c1, c2 = st.columns(2)
-            c1.markdown("**The method**")
-            c1.markdown(m["steps"])
-            c2.markdown("**Where marks are lost**")
-            c2.markdown(m["watch"])
-            st.markdown("**How it is marked**")
-            st.markdown(m["marks"])
-            example = next(q for q in content.BANK if q["kind"] == kind)
-            with st.expander(f"A worked example - {example['source']}"):
-                ui.scenario(example["setting"], example["task"])
-                table.printed_row(example["row"])
-                res = solve(example)
-                table.walkthrough(res, example["row"], read_width(example))
-                if kind == "stratified":
-                    population = sum(s.size for s in example["strata"])
-                    st.markdown("**The group sizes**  \n" + "  \n".join(
-                        sh.working(population, example["n"]) for sh in res.shares))
-                st.markdown("**The sample**")
-                table.sample_chips(res.sample, res.width)
+            with c1:
+                st.markdown(f"**{doc.headings.get(content.METHOD, 'The method')}**")
+                ui.from_content(doc.section, content.METHOD)
+            with c2:
+                st.markdown(f"**{doc.headings.get(content.WATCH, 'Where marks are lost')}**")
+                ui.from_content(doc.section, content.WATCH)
+            st.markdown(f"**{doc.headings.get(content.MARKS, 'How it is marked')}**")
+            ui.from_content(doc.section, content.MARKS)
+            example = example_for(kind)
+            if example:
+                with st.expander(f"A worked example - {example['source']}"):
+                    ui.scenario(example["setting"], example["task"])
+                    table.printed_row(example["row"])
+                    res = solve(example)
+                    table.walkthrough(res, example["row"], read_width(example))
+                    if kind == "stratified":
+                        population = sum(s.size for s in example["strata"])
+                        st.markdown("**The group sizes**  \n" + "  \n".join(
+                            sh.working(population, example["n"]) for sh in res.shares))
+                    st.markdown("**The sample**")
+                    table.sample_chips(res.sample, res.width)
+
     with tabs[4]:
-        st.markdown(content.REPRESENTATIVE)
+        ui.from_content(content.text, content.REPRESENTATIVE)
     with tabs[5]:
-        st.markdown(content.EXAM_NOTES)
-        st.markdown("### Seven ways to lose a mark")
-        for title, fix in content.MISCONCEPTIONS:
-            st.markdown(f"- **{title}.** {fix}")
+        ui.from_content(content.text, content.EXAM_NOTES)
+        ui.from_content(content.text, content.MISTAKES)
 
 
 DRILL_OPTIONS = {
@@ -433,8 +452,13 @@ def page_bank() -> None:
     ui.page_header(TOPIC_LINE, "Questions from our own papers",
                    "Every one of these has been set in class, with its answer "
                    "already checked.")
-    labels = {q["id"]: f"{q['source']} - {KIND_NAMES[q['kind']]}" for q in content.BANK}
-    chosen = st.selectbox("Question", [q["id"] for q in content.BANK],
+    try:
+        bank = content.questions()
+    except ContentError as exc:
+        st.error(f"Content needs attention: {exc}")
+        return
+    labels = {q["id"]: f"{q['source']} - {KIND_NAMES[q['kind']]}" for q in bank}
+    chosen = st.selectbox("Question", [q["id"] for q in bank],
                           format_func=lambda i: labels[i], key="bank_choice")
-    q = next(x for x in content.BANK if x["id"] == chosen)
+    q = next(x for x in bank if x["id"] == chosen)
     attempt(q, prefix=f"bank:{chosen}", source=q["source"], note=q.get("note", ""))

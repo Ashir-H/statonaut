@@ -14,7 +14,10 @@ uv sync
 uv run streamlit run streamlit_app.py
 ```
 
-Or without uv:
+Start it through uv, or activate the project's `.venv` first. A bare
+`streamlit run` uses whichever Streamlit is first on PATH, which may be an
+older one installed system-wide — and the sidebar navigation needs 1.40 or
+newer. Without uv:
 
 ```bash
 pip install -r requirements.txt
@@ -43,14 +46,18 @@ student gets the same table.
 ## How it is built
 
 ```
+content/                      everything a student reads, as Markdown
+content/sampling/             one folder per topic, plus questions.toml
 streamlit_app.py              router: builds the sidebar from the registry
 src/app/registry.py           Topic and Page, and the list of topics
 src/app/home.py               the front page, written from the registry
 src/app/core/ui.py            stylesheet and the pieces every topic reuses
+src/app/core/library.py       finds and splits the content files
 src/app/core/marks.py         marking, with no Streamlit import: testable alone
 src/app/core/scoring.py       outcomes on screen and the running score
 src/app/topics/sampling/      one topic: topic, engine, generate, content, table, views
 tests/test_sampling_engine.py the engine against every answer checked in class
+tests/test_content.py         the content files, and the answers they still give
 tests/test_app.py             every registered page rendered and answered
 ```
 
@@ -60,6 +67,16 @@ block renderer, and the ask-mark-show-the-answer plumbing (`mark_sample`,
 A topic supplies its own questions and input forms. `core/marks.py` imports
 nothing from Streamlit, so marking and any topic's own logic can be tested
 without it installed.
+
+### Changing the words
+
+No page has its text in the code. Edit the Markdown in `content/`, save, and
+reload the page in the browser — see [content/README.md](content/README.md) for
+which file is which. Questions live in `content/sampling/questions.toml`, and
+adding one needs no code either.
+
+If a file or a heading the page looks for goes missing, the page says so in
+place, naming the file, and carries on.
 
 ### Adding a topic
 
@@ -97,6 +114,7 @@ Worth knowing before going deeper:
 
 ```bash
 python tests/test_sampling_engine.py
+python tests/test_content.py
 python tests/test_app.py
 ```
 
@@ -105,7 +123,12 @@ the Unit 1 deck, the random number tables worksheet, the CA1 retake, the 0479
 2027 specimen paper 2, and 4040 November 2023 and 2024. If a change breaks one
 of them, the engine is wrong.
 
-The second builds the navigation, checks every page address is legal and unique,
+The second reads every content file, checks the headings the pages rely on are
+present, and confirms the twelve questions in `questions.toml` still produce
+the answers printed on those papers — so a mistyped row is caught rather than
+quietly changing an answer.
+
+The third builds the navigation, checks every page address is legal and unique,
 renders every registered page, completes a drill for each method, submits a
 correct and an incorrect answer for every question type, and marks all twelve
 bank questions.

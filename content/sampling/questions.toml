@@ -1,0 +1,175 @@
+# Questions already set in class.
+#
+# Each [[question]] is one question. Wording can be changed freely; the
+# numbers decide the answer, which the app works out for itself.
+#
+#   kind    simple | systematic | stratified
+#   lo, hi  the lowest and highest label in the population
+#   n       the sample size asked for
+#   row     the random number table, printed in pairs
+#   marks   what the selection is worth
+#   strata  for a stratified question, instead of lo and hi
+
+[[question]]
+id = "deck-1"
+source = "Unit 1 deck, worked example (Part 4)"
+kind = "simple"
+setting = "A year group has 60 students. They are numbered 01 to 60."
+task = "Use the table to select a simple random sample of 5 students."
+lo = 1
+hi = 60
+n = 5
+marks = 2
+row = "68 05 41 05 89 23 60 17 74 36 91 08 52 66 30 47"
+note = "Two numbers are out of range and one is a repeat."
+
+[[question]]
+id = "deck-2"
+source = "Unit 1 deck, worked example (Part 4)"
+kind = "systematic"
+setting = "The same 60 students, numbered 01 to 60."
+task = "Use the table to select a systematic sample of 6 students."
+lo = 1
+hi = 60
+n = 6
+marks = 3
+row = "74 21 09 63 30 86 12 45 07 58 93 26 51 04 77 39"
+note = "The interval is 10, so the start must be between 01 and 10. 74 and 21 are both real students, and both are rejected."
+
+[[question]]
+id = "deck-3"
+source = "Unit 1 deck, Part 4 practice 1"
+kind = "simple"
+setting = "A club has 45 members, numbered 01 to 45."
+task = "Select a simple random sample of 4 members."
+lo = 1
+hi = 45
+n = 4
+marks = 2
+row = "97 38 69 43 06 89 13 44 91 40 65 52 05 88 03 34"
+
+[[question]]
+id = "deck-4"
+source = "Unit 1 deck, Part 4 practice 2"
+kind = "systematic"
+setting = "A club has 70 members, numbered 01 to 70."
+task = "Select a systematic sample of 7 members."
+lo = 1
+hi = 70
+n = 7
+marks = 3
+row = "68 05 41 05 89 23 60 17 74 36 91 08 52 66 30 47"
+note = "The trap: 68 is a member of the club, but the interval is 10, so it cannot be the random start."
+
+[[question]]
+id = "ws-1"
+source = "Random number tables worksheet, Q1"
+kind = "simple"
+setting = "A population of 48 is numbered 01 to 48."
+task = "Select a simple random sample of 6."
+lo = 1
+hi = 48
+n = 6
+marks = 3
+row = "63 17 42 90 05 17 38 71 48 26 09 55 31"
+note = "48 is a boundary that should be accepted. 17 appears twice."
+
+[[question]]
+id = "ws-2"
+source = "Random number tables worksheet, Q2"
+kind = "simple"
+setting = "A population of 350 is numbered 001 to 350."
+task = "Select a simple random sample of 5."
+lo = 1
+hi = 350
+n = 5
+marks = 3
+row = "27 45 19 08 33 50 91 22 74 00 01 46 33 87"
+note = "Printed in pairs, read in threes. 350 is in; 000 is not a member because the numbering starts at 001."
+
+[[question]]
+id = "ws-3"
+source = "Random number tables worksheet, Q3"
+kind = "stratified"
+setting = "A population of 50 splits into three groups: Group S numbered 01-20, Group P numbered 21-40, Group O numbered 41-50."
+task = "Show that the sample of 5 contains 2, 2 and 1, then select it."
+strata = [
+    { name = "Group S", lo = 1, hi = 20 },
+    { name = "Group P", lo = 21, hi = 40 },
+    { name = "Group O", lo = 41, hi = 50 },
+]
+n = 5
+marks = 3
+row = "72 14 33 08 61 11 33 47 90 26 05 38"
+note = "One pass along the table. 11 and 05 are skipped because Group S is already full."
+
+[[question]]
+id = "ws-4"
+source = "Random number tables worksheet, Q4"
+kind = "stratified"
+setting = "A population of 240 splits into three groups: Group A numbered 001-120, Group J numbered 121-200, Group S numbered 201-240."
+task = "Select a stratified sample of 6."
+strata = [
+    { name = "Group A", lo = 1, hi = 120 },
+    { name = "Group J", lo = 121, hi = 200 },
+    { name = "Group S", lo = 201, hi = 240 },
+]
+n = 6
+marks = 3
+row = "08 75 63 01 22 29 08 79 04 10 50 46 00 01 18 75 21 64 23 31 97 42"
+note = "The same table read for a simple random sample gives 5 from Group A, none from J and 1 from S - which is why the stratified method exists."
+
+[[question]]
+id = "ws-5"
+source = "Random number tables worksheet, Q5"
+kind = "systematic"
+setting = "Raffle tickets are numbered 000 to 599."
+task = "Select a systematic sample of 40 tickets."
+lo = 0
+hi = 599
+n = 40
+marks = 3
+row = "47 83 19 15 00 09 62 30 71 04 52 88"
+note = "The interval is 15, so the start is read in pairs and must be 00 to 14. 15 itself is one too big, and 00 is a real ticket."
+
+[[question]]
+id = "retake-2"
+source = "Class Assessment 1 retake, Q2"
+kind = "simple"
+setting = "A depot has 300 parcels numbered 000 to 299. Parcels 000-224 are local and 225-299 are international."
+task = "Select a simple random sample of 4 parcels."
+lo = 0
+hi = 299
+n = 4
+marks = 2
+row = "48 71 62 00 09 31 16 20 45 27 85 36"
+note = "Read in pairs this row begins 48, 71, 62 and gives nothing away. Regroup into threes. Parcel 000 is real and is selected second."
+
+[[question]]
+id = "retake-3"
+source = "Class Assessment 1 retake, Q3"
+kind = "stratified"
+setting = "A club of 60: Juniors numbered 01-30, Seniors 31-50, Veterans 51-60."
+task = "Find the number needed from each group, then select the sample of 6."
+strata = [
+    { name = "Junior", lo = 1, hi = 30 },
+    { name = "Senior", lo = 31, hi = 50 },
+    { name = "Veteran", lo = 51, hi = 60 },
+]
+n = 6
+marks = 3
+row = "74 18 52 09 18 36 88 27 57 41 63 05"
+note = "57 is a real Veteran, but the Veterans are already full, so it is skipped. So is 05."
+
+[[question]]
+id = "retake-4"
+source = "Class Assessment 1 retake, Q4"
+kind = "systematic"
+setting = "A factory has 400 bottles numbered 001 to 400."
+task = "Select a systematic sample of 8 bottles."
+lo = 1
+hi = 400
+n = 8
+marks = 3
+row = "68 93 57 24 05 81 46 30 19 72"
+note = "The interval is 50, so the start is read in pairs even though the bottles have three-digit labels."
