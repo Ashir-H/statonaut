@@ -1,0 +1,20 @@
+[project]
+name = "app"
+version = "0.1.0"
+description = "Statistics 101 - practice app for Cambridge IGCSE Statistics 0479"
+readme = "README.md"
+authors = [
+    { name = "Ashir", email = "ashirhabib999@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "streamlit>=1.40",
+]
+
+[project.scripts]
+app = "app:main"
+stats101 = "app:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
