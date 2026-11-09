@@ -356,6 +356,50 @@ print(f"row width: fits the {core_motion.COLUMN_PX}px column at its widest momen
       f"({widest[0]:.0f}px, {widest[1]})")
 
 
+
+# 11. every question must be answerable from what is on the page
+def facts_needed(q):
+    """The numbers a student cannot answer this question without."""
+    kind = q["kind"]
+    if kind == "representative":
+        return ([str(v) for v in q["sizes"]] + [str(v) for v in q["observed"]]
+                + [str(q["population"]), str(q["n"])] + list(q["groups"]))
+    if kind == "interval":
+        return [str(q["population"]), str(q["a"]), str(q["b"])]
+    if kind == "stratified":
+        width = engine.label_width(max(x.hi for x in q["strata"]))
+        return ([str(q["n"])] + [x.name for x in q["strata"]]
+                + [engine.pad(x.lo, width) for x in q["strata"]])
+    width = engine.label_width(q["hi"])
+    # the whole table, spelled as it is printed: in pairs
+    return [str(q["n"]), engine.pad(q["lo"], width), engine.pad(q["hi"], width),
+            engine.in_pairs(q["row"])]
+
+
+for kind in views.KIND_NAMES:
+    q = generate.build(kind, 4821)
+    if not views.task_text(q).strip():
+        problems.append(f"a {kind} question states no task: the scenario box is "
+                        "followed by an empty line")
+    at = AppTest.from_string(
+        "import sys\n"
+        f"sys.path.insert(0, {str(ROOT / 'src')!r})\n"
+        "from app.topics.sampling import views, generate\n"
+        f"views.attempt(generate.build({kind!r}, 4821), prefix='check')\n",
+        default_timeout=90).run()
+    complain(f"answerable check, {kind}", at)
+    on_page = " ".join(
+        [m.value for m in at.markdown] + [c.value for c in at.caption]
+        + [str(w.label) for w in at.number_input] + [str(w.label) for w in at.text_input]
+        + [str(w.label) for w in at.radio] + [str(o) for w in at.radio for o in w.options]
+    )
+    missing = [f for f in facts_needed(q) if f not in on_page]
+    if missing:
+        problems.append(f"a {kind} question cannot be answered from the page: "
+                        f"{missing} appear nowhere on it")
+print(f"answerable: all {len(views.KIND_NAMES)} question types state their task and "
+      "show every number needed to answer")
+
 print()
 if problems:
     print(f"{len(problems)} PROBLEM(S):")

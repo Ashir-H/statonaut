@@ -73,7 +73,29 @@ def task_text(q: Dict) -> str:
         groups = ", ".join(f"{s.name} numbered {s.label_range(width)}" for s in q["strata"])
         return (f"The {q['noun']} are numbered {label_range(q)}: {groups}. Select a "
                 f"stratified sample of {q['n']} {q['noun']}.")
+    if kind == "interval":
+        return (f"The {q['noun']} are numbered 1 to {q['population']}. A systematic "
+                f"sample was taken, and two of the {q['noun']} in it are numbered "
+                f"{q['a']} and {q['b']}. Find the smallest possible size of that "
+                "sample.")
+    if kind == "representative":
+        return (f"The table shows how the {q['noun']} are divided into groups, and how "
+                f"many of each group were in a sample of {q['n']}. Decide whether the "
+                f"sample is representative of all {q['population']} {q['noun']}.")
     return ""
+
+
+def population_and_sample(q: Dict) -> str:
+    """The group sizes beside the sample's make-up.
+
+    The comparison is the question, so both columns have to be on the page -
+    the expected numbers cannot be worked out from the sample alone.
+    """
+    rows = "".join(f"| {group} | {size} | {seen} |\n"
+                   for group, size, seen in zip(q["groups"], q["sizes"], q["observed"]))
+    return (f"| {q['noun'].title()} | In the population | In the sample |\n"
+            "|---|---:|---:|\n" + rows
+            + f"| **Total** | **{q['population']}** | **{q['n']}** |")
 
 
 def signature(q: Dict) -> str:
@@ -102,6 +124,8 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
     width = read_width(q)
     ui.scenario(q["setting"], task_text(q), source)
 
+    if q["kind"] == "representative":
+        st.markdown(population_and_sample(q))
     if q["kind"] in TABLE_KINDS:
         table.printed_row(q["row"])
         # The reader chooses the block width and sees the digits regroup. The
@@ -168,7 +192,6 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                               for name, vs in result.picks.items())))
 
         elif q["kind"] == "interval":
-            st.write(f"Two members of a systematic sample are **{q['a']}** and **{q['b']}**.")
             c1, c2 = st.columns(2)
             diff = c1.number_input("The difference between them", min_value=1, step=1,
                                    value=1, key=f"{prefix}:diff")
@@ -184,10 +207,7 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                     f"{q['population']} / {q['difference']} = {q['answer']}"))
 
         else:   # representative
-            st.write("**The sample that was taken**")
-            st.markdown(" | ".join(f"{g}: **{o}**"
-                                   for g, o in zip(q["groups"], q["observed"])))
-            st.write("**How many would you expect from each group?**")
+            st.write("**How many of each group would you expect in the sample?**")
             cols = st.columns(len(q["groups"]))
             expected = [c.number_input(g, min_value=0, step=1, value=0,
                                        key=f"{prefix}:exp:{g}")
@@ -204,7 +224,8 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                 parts.append(scoring.part(
                     "The expected numbers",
                     scoring.mark_count(q["expected"], [int(e) for e in expected], 1),
-                    " ".join(f"{g}: {e}" for g, e in zip(q["groups"], q["expected"]))))
+                    "; ".join(f"{size}/{q['population']} \u00d7 {q['n']} = {want}"
+                              for size, want in zip(q["sizes"], q["expected"]))))
                 parts.append(scoring.part(
                     "The conclusion",
                     scoring.mark_value(q["fair"], verdict.startswith("Yes")),
