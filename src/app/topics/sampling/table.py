@@ -11,8 +11,11 @@ from .engine import ACCEPT, REJECT, SKIP, Step
 
 CLASS_FOR = {ACCEPT: "acc", REJECT: "rej", SKIP: "skp"}
 
-LEGEND = [("selected", "#86efac"), ("rejected", "#fca5a5"),
-          ("skipped, group full", "#fcd34d"), ("not reached", "#e2e8f0")]
+# The swatches match the block fills, which are translucent so that they sit
+# correctly on a light or a dark page.
+LEGEND = [("selected", "rgba(34,197,94,.55)"), ("rejected", "rgba(239,68,68,.5)"),
+          ("skipped, group full", "rgba(245,158,11,.55)"),
+          ("not reached", "rgba(128,128,128,.25)")]
 
 VERDICT = {
     engine.R_IN_RANGE: "selected",

@@ -6,6 +6,7 @@ the moment it is registered.
 """
 
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -180,6 +181,76 @@ for item in content.questions():
         submit[0].click().run()
         complain(f"bank {item['id']} submit", at)
 print(f"bank: {len(content.questions())} questions rendered and marked")
+
+# 8. the New question button really draws a new question
+practice = _find("practice")
+at = open_page(*practice)
+seeds = {at.session_state["practice"]["seed"]}
+for press in range(4):
+    [b for b in at.button if "New question" in str(b.label)][0].click().run()
+    complain(f"new question press {press + 1}", at)
+    seed = at.session_state["practice"]["seed"]
+    code = at.text_input(key="practice:code").value
+    if code != str(seed):
+        problems.append(f"the code box shows {code} but the question is {seed}")
+    seeds.add(seed)
+if len(seeds) < 4:
+    problems.append(f"five presses of New question gave only {len(seeds)} questions")
+at.text_input(key="practice:code").set_value("4821").run()
+if at.session_state["practice"]["seed"] != 4821:
+    problems.append("typing a code no longer pins the question")
+print(f"new question: {len(seeds)} different questions from five presses, "
+      "code box follows, typed code still pins")
+
+
+# 9. the stylesheet has to work on a light and a dark page
+from app.core import ui as core_ui  # noqa: E402
+
+if re.search(r"@media[^{]*prefers-color-scheme", core_ui.CSS):
+    problems.append("the stylesheet switches on the operating system's colour "
+                    "scheme, which is wrong whenever that disagrees with the "
+                    "app's own theme")
+
+
+def _luminance(colour):
+    def channel(value):
+        value /= 255
+        return value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+    r, g, b = (channel(c) for c in colour)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(front, back):
+    high, low = sorted((_luminance(front), _luminance(back)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+# Streamlit's own light and dark defaults: page colour and body text colour.
+THEMES = {"light": ((255, 255, 255), (49, 51, 63)),
+          "dark": ((14, 17, 23), (250, 250, 250))}
+
+worst = (99.0, "")
+for rule in re.finditer(r"([^{}]+)\{([^}]*)\}", core_ui.CSS):
+    selector, body = rule.group(1).strip(), rule.group(2)
+    fill = re.search(r"background:\s*rgba\(([^)]+)\)", body)
+    if not fill:
+        if re.search(r"background:\s*#", body):
+            problems.append(f"'{selector}' uses an opaque colour fill, which only "
+                            "suits one theme")
+        continue
+    red, green, blue, alpha = (float(v) for v in fill.group(1).split(","))
+    for name, (page, text) in THEMES.items():
+        behind = tuple(alpha * f + (1 - alpha) * p
+                       for f, p in zip((red, green, blue), page))
+        score = _contrast(text, behind)
+        if score < worst[0]:
+            worst = (score, f"'{selector}' on the {name} theme")
+        if score < 4.5:
+            problems.append(f"'{selector}' leaves text at {score:.1f}:1 on the "
+                            f"{name} theme, below the 4.5:1 needed to read it")
+print(f"stylesheet: readable on both themes, worst case {worst[0]:.1f}:1 "
+      f"at {worst[1]}")
+
 
 print()
 if problems:
