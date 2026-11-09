@@ -104,14 +104,12 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
 
     if q["kind"] in TABLE_KINDS:
         table.printed_row(q["row"])
-        with st.expander("Show me the digits regrouped for reading"):
-            table.blocks(q["row"], width, revealed=0)
-            st.caption(
-                f"Reading in blocks of {width}. "
-                + ("The interval decides this width, not the labels."
-                   if q["kind"] == "systematic" and width != engine.label_width(q["hi"])
-                   else "This matches the width of the labels.")
-            )
+        # The reader chooses the block width and sees the digits regroup. The
+        # app does not say which width this question wants: working that out
+        # is the skill, and the marking will show whether it was right.
+        table.regrouper(q["row"], key=prefix,
+                        labelled=f"The {q.get('noun', 'members')} are numbered "
+                                 f"{label_range(q)}.")
 
     with st.form(f"{prefix}:form"):
         parts: List[Dict] = []
@@ -245,6 +243,7 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                 population = sum(s.size for s in q["strata"])
                 st.markdown("**The group sizes**  \n" + "  \n".join(
                     sh.working(population, q["n"]) for sh in result.shares))
+                table.gathering(result, q["strata"])
 
     with st.expander("What the mark scheme rewards"):
         if q["kind"] in content.METHOD_KINDS:
@@ -278,8 +277,14 @@ def page_learn() -> None:
         ui.from_content(content.text, content.READING)
         example = example_for("simple")
         if example:
-            st.caption(f"Worked through: {example['setting']}")
+            st.markdown("**Try it on this table**")
+            st.caption(example["setting"])
             table.printed_row(example["row"])
+            table.regrouper(example["row"], key="learn-reading",
+                            labelled=f"Here the students are numbered "
+                                     f"{label_range(example)}.")
+            st.divider()
+            st.caption("Read in the width the labels need, this is what happens:")
             result = solve(example)
             table.walkthrough(result, example["row"], read_width(example))
             st.markdown("**The sample**")
@@ -395,7 +400,8 @@ def page_drill() -> None:
     i = state["i"]
     total = len(result.steps)
     table.blocks(q["row"], width, result.steps, revealed=i,
-                 current=i if i < total else None)
+                 current=i if i < total else None,
+                 just=i - 1 if i else None)
     table.legend()
 
     if i < total:
@@ -418,9 +424,7 @@ def page_drill() -> None:
         st.markdown("**The sample**")
         table.sample_chips(result.sample, result.width)
         if kind == "stratified":
-            st.markdown("  \n".join(
-                f"**{name}**: " + " ".join(engine.pad_all(vs, result.width))
-                for name, vs in result.picks.items()))
+            table.gathering(result, q["strata"])
         if kind == "systematic":
             st.markdown(f"Start `{engine.pad(result.start, result.width)}`, "
                         f"interval **{result.interval}**.")

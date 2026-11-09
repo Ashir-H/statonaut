@@ -204,7 +204,10 @@ print(f"new question: {len(seeds)} different questions from five presses, "
 
 
 # 9. the stylesheet has to work on a light and a dark page
+from app.core import motion as core_motion  # noqa: E402
 from app.core import ui as core_ui  # noqa: E402
+
+STYLESHEET = core_ui.CSS + core_motion.CSS
 
 if re.search(r"@media[^{]*prefers-color-scheme", core_ui.CSS):
     problems.append("the stylesheet switches on the operating system's colour "
@@ -230,7 +233,7 @@ THEMES = {"light": ((255, 255, 255), (49, 51, 63)),
           "dark": ((14, 17, 23), (250, 250, 250))}
 
 worst = (99.0, "")
-for rule in re.finditer(r"([^{}]+)\{([^}]*)\}", core_ui.CSS):
+for rule in re.finditer(r"([^{}]+)\{([^}]*)\}", STYLESHEET):
     selector, body = rule.group(1).strip(), rule.group(2)
     fill = re.search(r"background:\s*rgba\(([^)]+)\)", body)
     if not fill:
@@ -250,6 +253,107 @@ for rule in re.finditer(r"([^{}]+)\{([^}]*)\}", core_ui.CSS):
                             f"{name} theme, below the 4.5:1 needed to read it")
 print(f"stylesheet: readable on both themes, worst case {worst[0]:.1f}:1 "
       f"at {worst[1]}")
+
+
+# 10. animation has to stay off the main thread and out of the server
+COMPOSITED = {"transform", "opacity"}
+for frames in re.finditer(r"@keyframes\s+([\w-]+)\s*\{(.+?)\}\s*\n",
+                          core_motion.CSS, re.S):
+    name, body = frames.group(1), frames.group(2)
+    for prop in set(re.findall(r"([a-z-]+)\s*:", body)):
+        if prop not in COMPOSITED:
+            problems.append(f"@keyframes {name} animates '{prop}', which forces "
+                            "layout or paint on every frame; only transform and "
+                            "opacity are composited")
+if not re.search(r"@media[^{]*prefers-reduced-motion", core_motion.CSS):
+    problems.append("the animations ignore prefers-reduced-motion")
+
+# The lesson that cost four rounds of tuning: Streamlit patches attributes on
+# elements it already has, rather than inserting new ones. A finished keyframe
+# animation does not re-run when that happens, it only holds a new end value,
+# so the thing jumps. Anything that has to move when a value *changes* needs a
+# transition; keyframes are for something that has just *appeared*.
+digit = re.search(r"\.s101-seq \.ch \{([^}]*)\}", core_motion.CSS)
+if not digit:
+    problems.append("the digit row's own rule has gone, so none of the checks "
+                    "below mean anything")
+else:
+    rule = digit.group(1)
+    if "transform:" not in rule:
+        problems.append("the digit row's offset is not in its own resting style, so "
+                        "the gaps between blocks exist only while something animates")
+    if not re.search(r"transition:[^;]*transform", rule):
+        problems.append("the digit row has no transition on transform, so a width "
+                        "change patched onto the existing elements will jump")
+    if "animation-name" in rule or "animation:" in rule:
+        problems.append("the digit row's position depends on an animation, which will "
+                        "not re-run when Streamlit patches the element in place")
+reduced = re.search(r"@media[^{]*prefers-reduced-motion[^{]*\{(.+?)\n\}",
+                    core_motion.CSS, re.S)
+if reduced and "transition: none" not in reduced.group(1):
+    problems.append("prefers-reduced-motion switches off animations but not the "
+                    "transition, so the digit row would still slide")
+# Read the code, not the prose about it: a docstring may well mention sleep
+# in order to explain why there is none.
+import ast as _ast  # noqa: E402
+
+for source in sorted((ROOT / "src").rglob("*.py")):
+    tree = _ast.parse(source.read_text(encoding="utf-8"))
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.Call):
+            called = node.func
+            name = (called.attr if isinstance(called, _ast.Attribute)
+                    else getattr(called, "id", ""))
+            if name == "sleep":
+                problems.append(f"{source.name} calls sleep(), which holds the "
+                                "server for every frame of an animation")
+    for text in (n.value for n in _ast.walk(tree)
+                 if isinstance(n, _ast.Constant) and isinstance(n.value, str)):
+        if "<script" in text:
+            problems.append(f"{source.name} emits a <script> tag, which is "
+                            "stripped unless it runs inside an iframe")
+frames_found = sorted(re.findall(r"@keyframes\s+([\w-]+)", core_motion.CSS))
+print(f"animation: {len(frames_found)} keyframes, all on transform/opacity only, "
+      "reduced motion respected, no sleeps and no scripts")
+
+# the regrouping maths: each digit carries the block it now belongs to, and
+# nothing about where it came from - the browser interpolates from wherever
+# the digit already is, which is what makes the transition work at all
+for was, now, expected in ((2, 3, [0, 0, 0, 1, 1, 1]), (3, 2, [0, 0, 1, 1, 2, 2])):
+    html = core_motion.regroup("123456", was, now)
+    got = [int(m) for m in re.findall(r"--block: (-?\d+)", html)]
+    if got != expected:
+        problems.append(f"regrouping 6 digits from {was} to {now} put them in "
+                        f"blocks {got}, expected {expected}")
+    for stale in ("--was", "--now", "--mid"):
+        if stale in html:
+            problems.append(f"the markup still carries {stale}, left over from the "
+                            "keyframe approach that could not re-fire")
+print("regrouping: each digit carries only the block it now belongs to")
+
+# the row has to fit the column at its widest moment, or the end of the table
+# is clipped exactly as it starts to move
+widest = (0.0, "")
+for length in (20, 26, 32, 40, 44, 48):
+    for was, now in ((2, 1), (2, 3), (2, 4), (3, 2), (4, 2)):
+        blocks = max(-(-length // was), -(-length // now))
+        font, gap = core_motion.fit(length, blocks)
+        cell = dict(core_motion.CELL_PX)[float(font.removesuffix("rem"))]
+        used = length * cell + (blocks - 1) * float(gap.removesuffix("rem")) * 16
+        # Reading a long table in single digits cannot fit and is allowed to
+        # scroll; every grouping a question actually asks for has to fit.
+        allowance = core_motion.COLUMN_PX * (1.15 if now == 1 else 1.0)
+        if used > allowance:
+            problems.append(f"{length} characters read in {now}s needs {used:.0f}px, "
+                            f"against a {allowance:.0f}px allowance: the end of the "
+                            "table would be clipped as it moves")
+        travel = 3 * float(gap.removesuffix("rem")) * 16 / core_motion.REGROUP_SECONDS
+        if travel < 25 and now != 1:
+            problems.append(f"{length} characters read in {now}s move at only "
+                            f"{travel:.0f}px/s, which reads as stationary")
+        widest = max(widest, (used, f"{length} characters in blocks of {now}"))
+print(f"row width: fits the {core_motion.COLUMN_PX}px column at its widest moment "
+      f"({widest[0]:.0f}px, {widest[1]})")
 
 
 print()

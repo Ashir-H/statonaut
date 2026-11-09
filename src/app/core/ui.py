@@ -4,6 +4,7 @@ from typing import Iterable, Optional, Sequence, Tuple
 
 import streamlit as st
 
+from . import motion
 from .library import ContentError
 
 CSS = """
@@ -65,7 +66,7 @@ CSS = """
 
 def inject() -> None:
     """Called once per page, since every rerun starts from the entry script."""
-    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown(CSS + motion.CSS, unsafe_allow_html=True)
 
 
 def from_content(fetch, *args) -> None:
