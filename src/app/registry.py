@@ -45,9 +45,10 @@ class Topic:
 
 def topics() -> List[Topic]:
     """Every topic in the app, in teaching order."""
+    from .topics.central_tendency.topic import TOPIC as central_tendency
     from .topics.sampling.topic import TOPIC as sampling
 
-    return [sampling]
+    return [sampling, central_tendency]
 
 
 def pages() -> List[Tuple[Topic, Page]]:

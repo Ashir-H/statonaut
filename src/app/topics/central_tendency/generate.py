@@ -1,0 +1,177 @@
+"""Question generation for the three measures.
+
+Every question is built from a seed, so the same four-digit code always gives
+the same question and a teacher can put one code on the board for the class.
+The engine then solves whatever was built, so a printed answer can never drift
+away from the question it belongs to.
+
+Data is composed rather than drawn blindly, for one reason above all: the
+highest frequency must belong to a single value. No question in the 4040
+archive has a tied mode and no mark scheme says how to mark one, so a
+generated question that produced a tie would be unmarkable. Every builder
+checks the engine's own verdict before handing a question back, and the tests
+sweep thousands of seeds to confirm it never slips.
+"""
+
+import random
+from typing import Dict, List, Optional, Sequence, Tuple
+
+from . import engine
+from .engine import Row
+
+# ---------------------------------------------------------------- scenarios
+
+LIST_CONTEXTS: Sequence[Tuple[str, str, str]] = [
+    ("{n} students were asked how many books they had borrowed from the library "
+     "last month.", "Books borrowed", "students"),
+    ("A netball team played {n} matches. The number of goals scored in each match "
+     "was recorded.", "Goals scored", "matches"),
+    ("{n} households were asked how many cars they own.", "Cars owned", "households"),
+    ("{n} pupils were asked how many pets they keep at home.", "Pets kept", "pupils"),
+    ("A shop was open for {n} days. The number of complaints received each day was "
+     "recorded.", "Complaints", "days"),
+    ("{n} candidates sat a short test marked out of 12.", "Marks", "candidates"),
+    ("{n} members of a cycling club recorded the number of rides they made in one "
+     "week.", "Rides", "members"),
+    ("A bus was late on {n} mornings. The number of minutes late was recorded each "
+     "time.", "Minutes late", "mornings"),
+]
+
+TABLE_CONTEXTS: Sequence[Tuple[str, str, str]] = [
+    ("{n} students were asked how many pets they keep at home.", "Pets", "Students"),
+    ("A football team played {n} matches. The number of goals scored in each match "
+     "is shown in the table.", "Goals", "Matches"),
+    ("{n} students were asked how many online courses they had completed.",
+     "Courses", "Students"),
+    ("{n} customers were asked how many items they had bought.", "Items", "Customers"),
+    ("The number of days absent was recorded for each of {n} students.",
+     "Days absent", "Students"),
+    ("{n} families were asked how many children live at home.", "Children", "Families"),
+    ("A machine was checked on {n} days and the number of faults was recorded.",
+     "Faults", "Days"),
+]
+
+
+# ------------------------------------------------------------- a plain list
+
+
+def _list_values(rng: random.Random, n: int) -> List[int]:
+    """A list with one outright mode, printed out of order.
+
+    The mode is planted first and everything else is kept below its count, then
+    the engine is asked whether the result really has a single mode. Anything
+    that does not is thrown away rather than patched, so a tie can never reach
+    a student.
+    """
+    for _ in range(300):
+        repeats = rng.choice([3, 3, 4])
+        if repeats >= n:
+            continue
+        mode_value = rng.randrange(1, 13)
+        values = [mode_value] * repeats
+        pool = [v for v in range(1, 14) if v != mode_value]
+        rng.shuffle(pool)
+        while len(values) < n and pool:
+            value = pool.pop()
+            times = min(rng.choice([1, 1, 1, 2]), repeats - 1, n - len(values))
+            values.extend([value] * times)
+        if len(values) != n:
+            continue
+        rng.shuffle(values)
+        # A list that happens to arrive in order would hand over the ordering
+        # mark for nothing, so it is thrown back and shuffled again.
+        if (engine.mode_of(values) == mode_value
+                and max(values) > min(values)
+                and list(values) != sorted(values)):
+            return values
+    raise RuntimeError("could not compose a list with a single mode")
+
+
+def list_question(seed: int) -> Dict:
+    rng = random.Random(seed * 13 + 5)
+    setting, label, noun = rng.choice(LIST_CONTEXTS)
+    n = rng.choice([7, 8, 9, 9, 10, 11])
+    values = _list_values(rng, n)
+    return {
+        "kind": "list",
+        "seed": seed,
+        "setting": setting.format(n=n),
+        "label": label,
+        "noun": noun,
+        "values": values,
+    }
+
+
+# --------------------------------------------- an ungrouped frequency table
+
+
+def _table_rows(rng: random.Random) -> List[Row]:
+    """Rows whose highest frequency belongs to exactly one value.
+
+    The peak is lifted above every other frequency rather than hoped for, and
+    the engine still has the last word.
+    """
+    for _ in range(300):
+        count = rng.choice([4, 5, 5, 6])
+        if rng.random() < 0.3:
+            xs = sorted(rng.sample(range(2, 20), count))
+        else:
+            start = rng.choice([0, 0, 1])
+            xs = list(range(start, start + count))
+        fs = [rng.randrange(2, 12) for _ in xs]
+        peak = rng.randrange(count)
+        fs[peak] = max(fs) + rng.choice([1, 2, 3])
+        rows = [Row(x, f) for x, f in zip(xs, fs)]
+        if not 25 <= sum(fs) <= 60:
+            continue
+        if engine.solve_table(rows).mode is None:
+            continue
+        return rows
+    raise RuntimeError("could not compose a table with a single mode")
+
+
+def table_question(seed: int) -> Dict:
+    rng = random.Random(seed * 29 + 17)
+    setting, x_label, f_label = rng.choice(TABLE_CONTEXTS)
+    rows = _table_rows(rng)
+    return {
+        "kind": "table",
+        "seed": seed,
+        "setting": setting.format(n=sum(row.f for row in rows)),
+        "x_label": x_label,
+        "f_label": f_label,
+        "rows": [(row.x, row.f) for row in rows],
+    }
+
+
+# ------------------------------------------------------------------ the gate
+
+BUILDERS = {
+    "list": list_question,
+    "table": table_question,
+}
+
+
+def build(kind: str, seed: int) -> Dict:
+    return BUILDERS[kind](seed)
+
+
+def rows_of(question: Dict) -> List[Row]:
+    return [Row(x, f) for x, f in question["rows"]]
+
+
+def solve(question: Dict):
+    """Solve whichever kind of question this is."""
+    if question["kind"] == "list":
+        return engine.solve_list(question["values"])
+    return engine.solve_table(rows_of(question))
+
+
+def signature(question: Dict) -> str:
+    """Identifies the question, so a remembered mark belongs to this one only."""
+    return f"{question['kind']}:{question['seed']}"
+
+
+def new_seed(rng: Optional[random.Random] = None) -> int:
+    source = rng or random
+    return source.randrange(1000, 10000)
