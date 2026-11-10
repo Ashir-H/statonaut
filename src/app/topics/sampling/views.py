@@ -371,6 +371,77 @@ DRILL_OPTIONS = {
 }
 
 
+
+# What the table is being used to choose decides how wide the numbers are, and
+# when to stop reading. This is the distinction the drill exists to teach: in a
+# systematic sample the table picks one thing only, the random start.
+WHAT_THE_TABLE_CHOOSES = {
+    "simple": "You are choosing every member of the sample straight from the "
+              "table, so the numbers have to reach the largest label in the "
+              "population.",
+    "stratified": "You are choosing every member of the sample straight from the "
+                  "table, so the numbers have to reach the largest label in the "
+                  "population.",
+    "systematic": "You are choosing one thing only: the random start. Everything "
+                  "after it is found by adding the sampling interval, so the "
+                  "numbers only have to reach the end of the first interval.",
+}
+
+FIND_THE_INTERVAL = (
+    "A systematic sample takes every kth member, counting on from a random "
+    "start. Everything else here depends on k, so work it out before you read "
+    "anything from the table."
+)
+
+WHEN_TO_STOP = {
+    "simple": "Read on until the sample is full.",
+    "stratified": "Read on until every stratum is full.",
+    "systematic": "Stop at the first number that can be the start. The table's "
+                  "work is finished there.",
+}
+
+
+def needed_width(q: Dict, result) -> Tuple[int, int, int]:
+    """The width the question needs, and the range of numbers it has to cover."""
+    if q["kind"] == "systematic":
+        lo = q["lo"]
+        return read_width(q), lo, lo + result.interval - 1
+    if q["kind"] == "stratified":
+        hi = max(x.hi for x in q["strata"])
+        return engine.label_width(hi), 1, hi
+    return engine.label_width(q["hi"]), q["lo"], q["hi"]
+
+
+def width_verdict(q: Dict, chosen: int, result) -> Tuple[bool, str]:
+    """Why the chosen width is right or wrong, in terms of what is being chosen."""
+    want, lo, top = needed_width(q, result)
+    biggest = 10 ** chosen - 1
+    span = f"{engine.pad(lo, want)} to {engine.pad(top, want)}"
+
+    if chosen == want:
+        if q["kind"] == "systematic":
+            return True, (f"Yes. The start has to be one of the first "
+                          f"{result.interval} members, so the numbers run {span}, "
+                          f"and that needs {want} digits. The population is "
+                          f"numbered up to {q['hi']}, but you are not choosing a "
+                          "member of it here.")
+        return True, (f"Yes. The numbers have to cover the whole population, "
+                      f"{span}, and that needs {want} digits.")
+
+    if q["kind"] == "systematic" and chosen == engine.label_width(q["hi"]):
+        return False, (f"That is the width of the population's labels, which is "
+                       f"what you would read to choose a member. Here the table "
+                       f"is only choosing the random start, and a start cannot be "
+                       f"past the sampling interval of {result.interval}. The "
+                       f"numbers you need run {span}.")
+    if chosen < want:
+        return False, (f"Reading in {chosen}s gives numbers no larger than "
+                       f"{biggest}, so most of {span} could never come up.")
+    return False, (f"Reading in {chosen}s gives numbers as large as {biggest}, "
+                   f"far beyond {span}. Almost every number would be rejected, "
+                   "and some members could never be reached.")
+
+
 def _explain(q: Dict, step, result) -> str:
     value = engine.pad(step.value, read_width(q))
     lo, hi = ((1, max(s.hi for s in q["strata"])) if q["kind"] == "stratified"
@@ -403,8 +474,7 @@ def _explain(q: Dict, step, result) -> str:
 def page_drill() -> None:
     ui.inject()
     ui.page_header(TOPIC_LINE, "Selecting step by step",
-                   "One number at a time. Decide what happens to it before you "
-                   "move on.")
+                   "First decide how to read the table, then rule on each number.")
 
     state = st.session_state.setdefault("drill", {})
     c1, c2, c3 = st.columns([2, 1, 1])
@@ -412,27 +482,118 @@ def page_drill() -> None:
                         format_func=lambda k: KIND_NAMES[k], key="drill_kind")
     if c2.button("New table", use_container_width=True) or state.get("kind") != kind:
         state.clear()
-        state.update(kind=kind, seed=generate.new_seed(), i=0, right=0, wrong=0, last=None)
+        state.update(kind=kind, seed=generate.new_seed(),
+                     stage="interval" if kind == "systematic" else "width",
+                     i=0, right=0, wrong=0, last=None, width_choice=None,
+                     interval_answer=None)
     c3.caption(f"Code {state.get('seed', '')}")
 
     q = generate.build(kind, state["seed"])
     result = solve(q)
     width = read_width(q)
     ui.scenario(q["setting"], task_text(q))
-    if kind == "systematic":
-        st.info(f"The interval is {q['population']} / {q['n']} = **{result.interval}**, so "
-                f"the random start must be one of the first {result.interval} members.")
-    if kind == "stratified":
-        population = sum(s.size for s in q["strata"])
-        st.info("The sample splits as  " + " &nbsp;·&nbsp; ".join(
+    table.printed_row(q["row"])
+
+    stage = state.get("stage") or ("interval" if kind == "systematic" else "width")
+    if stage == "interval":
+        _find_the_interval(q, result, state)
+    elif stage == "width":
+        _choose_the_width(q, result, width, state)
+    else:
+        _rule_on_each_number(q, result, width, state)
+
+
+def _find_the_interval(q: Dict, result, state: Dict) -> None:
+    """Step one, systematic only: work out k.
+
+    Printing the interval and asking the next question underneath it is the
+    way a slide does it, and it is exactly what a student skims past. Here it
+    has to be produced before anything else happens.
+    """
+    st.markdown("**Step 1 of 3 · What is the sampling interval?**")
+    st.info(FIND_THE_INTERVAL)
+    with st.form(f"interval:{state['seed']}"):
+        given = st.number_input("The sampling interval", min_value=1, step=1, value=1,
+                                key=f"interval:{state['seed']}:value")
+        checked = st.form_submit_button("Check", type="primary")
+    if checked:
+        state["interval_answer"] = int(given)
+        state["interval_tries"] = state.get("interval_tries", 0) + 1
+        if int(given) != result.interval:
+            state["interval_wrong"] = state.get("interval_wrong", 0) + 1
+        st.rerun()
+
+    answer = state.get("interval_answer")
+    if answer is None:
+        return
+    if answer == result.interval:
+        every = q["noun"][:-1] if q["noun"].endswith("s") else q["noun"]
+        st.success(f"Yes. {q['population']} \u00f7 {q['n']} = {result.interval}, so "
+                   f"once you have a start you take every {result.interval}th "
+                   f"{every}.")
+        if st.button("Next: how to read the table", type="primary"):
+            state["stage"] = "width"
+            st.rerun()
+        return
+    if state.get("interval_tries", 0) < 2:
+        st.error(f"Not {answer}. The interval is how far apart the members of the "
+                 "sample are: the size of the population divided by the size of "
+                 "the sample. Try again.")
+        return
+    st.error(f"Not {answer}. There are {q['population']} {q['noun']} and the sample "
+             f"is {q['n']}, so the interval is {q['population']} \u00f7 {q['n']} = "
+             f"{result.interval}. Enter that to go on.")
+
+
+def _choose_the_width(q: Dict, result, width: int, state: Dict) -> None:
+    """Step two: what is the table being used to choose, and how wide is it?"""
+    if q["kind"] == "systematic":
+        st.markdown("**Step 2 of 3 · How many digits do you read together?**")
+    else:
+        st.markdown("**Step 1 of 2 · How many digits do you read together?**")
+    st.info(WHAT_THE_TABLE_CHOOSES[q["kind"]])
+    if q["kind"] == "systematic":
+        st.caption(f"You found the interval: **{result.interval}**.")
+
+    cols = st.columns(4)
+    for col, choice in zip(cols, (1, 2, 3, 4)):
+        label = "1 digit" if choice == 1 else f"{choice} digits"
+        if col.button(label, key=f"width:{state['seed']}:{choice}",
+                      use_container_width=True):
+            right, why = width_verdict(q, choice, result)
+            state["width_choice"] = choice
+            state["width_last"] = (right, why)
+            state["width_tries"] = state.get("width_tries", 0) + 1
+            if not right:
+                state["width_wrong"] = state.get("width_wrong", 0) + 1
+            st.rerun()
+
+    chosen = state.get("width_choice")
+    if not chosen:
+        return
+    st.caption(f"Read in blocks of {chosen}, the table gives:")
+    table.blocks(q["row"], chosen, revealed=0)
+    right, why = state["width_last"]
+    (st.success if right else st.error)(why)
+    if right and st.button("Now rule on each number", type="primary"):
+        state["stage"] = "numbers"
+        st.rerun()
+
+
+def _rule_on_each_number(q: Dict, result, width: int, state: Dict) -> None:
+    """Step two: the numbers themselves, one at a time."""
+    last = "3 of 3" if q["kind"] == "systematic" else "2 of 2"
+    st.markdown(f"**Step {last} · Reading in blocks of {width}**")
+    st.caption(WHEN_TO_STOP[q["kind"]])
+    if q["kind"] == "stratified":
+        population = sum(x.size for x in q["strata"])
+        st.info("The sample splits as  " + " &nbsp;\u00b7&nbsp; ".join(
             sh.working(population, q["n"]) for sh in result.shares))
 
-    table.printed_row(q["row"])
     i = state["i"]
     total = len(result.steps)
     table.blocks(q["row"], width, result.steps, revealed=i,
-                 current=i if i < total else None,
-                 just=i - 1 if i else None)
+                 current=i if i < total else None, just=i - 1 if i else None)
     table.legend()
 
     if i < total:
@@ -440,7 +601,7 @@ def page_drill() -> None:
         st.markdown(f"Number {i + 1} of the table is")
         ui.big(step.block)
         st.write("")
-        for text, reason in DRILL_OPTIONS[kind]:
+        for text, reason in DRILL_OPTIONS[q["kind"]]:
             if st.button(text, key=f"drill:{state['seed']}:{i}:{reason}",
                          use_container_width=True):
                 ok = reason == step.reason
@@ -449,19 +610,38 @@ def page_drill() -> None:
                 state["i"] = i + 1
                 st.rerun()
     else:
-        st.success("You have read as much of the table as the question needs.")
+        if q["kind"] == "systematic":
+            st.success("That is the random start, so the table's work is done. "
+                       "The rest of the sample is arithmetic.")
+        else:
+            st.success("You have read as much of the table as the question needs.")
         st.markdown("**The sample**")
         table.sample_chips(result.sample, result.width)
-        if kind == "stratified":
+        if q["kind"] == "stratified":
             table.gathering(result, q["strata"])
-        if kind == "systematic":
+        if q["kind"] == "systematic":
             st.markdown(f"Start `{engine.pad(result.start, result.width)}`, "
-                        f"interval **{result.interval}**.")
+                        f"interval **{result.interval}**, so the sample is "
+                        + " ".join(engine.pad_all(result.sample, result.width)))
         judged = state["right"] + state["wrong"]
         if judged:
             st.metric("Decisions you got right", f"{state['right']} / {judged}")
+        if state.get("interval_wrong"):
+            st.caption(f"The sampling interval took "
+                       f"{state['interval_wrong'] + 1} attempts.")
+        if state.get("interval_wrong"):
+            st.caption(f"The sampling interval took {state['interval_wrong'] + 1} "
+                       "attempts.")
+        if state.get("width_wrong"):
+            st.caption(f"You also tried {state['width_wrong']} other width"
+                       f"{'s' if state['width_wrong'] > 1 else ''} before reading "
+                       "the table.")
         if st.button("Another table", type="primary"):
-            state.update(seed=generate.new_seed(), i=0, right=0, wrong=0, last=None)
+            state.update(seed=generate.new_seed(),
+                         stage="interval" if q["kind"] == "systematic" else "width",
+                         i=0, right=0, wrong=0, last=None, width_choice=None,
+                         width_tries=0, width_wrong=0, interval_answer=None,
+                         interval_tries=0, interval_wrong=0)
             st.rerun()
 
     if state.get("last"):

@@ -96,6 +96,33 @@ for kind in views.TABLE_KINDS:
     at.selectbox(key="drill_kind").set_value(kind).run()
     complain(f"drill {kind} load", at)
     seed = at.session_state["drill"]["seed"]
+    q0 = generate.build(kind, seed)
+    solved0 = views.solve(q0)
+    if kind == "systematic":
+        # the interval has to be worked out before anything else happens
+        at.number_input(key=f"interval:{seed}:value").set_value(solved0.interval + 1)
+        [b for b in at.button if "Check" in str(b.label)][0].click().run()
+        complain(f"drill {kind} wrong interval", at)
+        if at.session_state["drill"]["stage"] != "interval":
+            problems.append(f"drill {kind}: a wrong interval let the student through")
+        at.number_input(key=f"interval:{seed}:value").set_value(solved0.interval)
+        [b for b in at.button if "Check" in str(b.label)][0].click().run()
+        [b for b in at.button if "how to read the table" in str(b.label)][0].click().run()
+        complain(f"drill {kind} right interval", at)
+        if at.session_state["drill"]["stage"] != "width":
+            problems.append(f"drill {kind}: the right interval did not open step two")
+    # the width has to be ruled on before any number is
+    want = views.needed_width(q0, solved0)[0]
+    wrong = next(w for w in (1, 2, 3, 4) if w != want)
+    [b for b in at.button if b.key == f"width:{seed}:{wrong}"][0].click().run()
+    complain(f"drill {kind} wrong width", at)
+    if at.session_state["drill"]["stage"] != "width":
+        problems.append(f"drill {kind}: a wrong width let the student straight through")
+    [b for b in at.button if b.key == f"width:{seed}:{want}"][0].click().run()
+    [b for b in at.button if "rule on each number" in str(b.label)][0].click().run()
+    complain(f"drill {kind} right width", at)
+    if at.session_state["drill"]["stage"] != "numbers":
+        problems.append(f"drill {kind}: the right width did not open step two")
     q = generate.build(kind, seed)
     steps = views.solve(q).steps
     for n, step in enumerate(steps):
@@ -110,7 +137,9 @@ for kind in views.TABLE_KINDS:
     if drill["wrong"] or drill["right"] != len(steps):
         problems.append(f"drill {kind}: scored {drill['right']} right, "
                         f"{drill['wrong']} wrong, of {len(steps)}")
-    print(f"drill {kind:11} {len(steps)} decisions, all scored right")
+    opening = "interval, then width" if kind == "systematic" else "width"
+    print(f"drill {kind:11} {opening} ruled on first, then {len(steps)} "
+          "decisions, all scored right")
     again = [b for b in at.button if "Another table" in str(b.label)]
     if again:
         again[0].click().run()
