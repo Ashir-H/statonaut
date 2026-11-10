@@ -16,7 +16,8 @@ TOPIC = Topic(
     pages=(
         Page("learn", "How it is done", views.page_learn, ":material/school:",
              "the reading rule, then a tab for each method with a worked example"),
-        Page("drill", "Walk the table", views.page_drill, ":material/arrow_forward:",
+        Page("drill", "Selecting step by step", views.page_drill,
+             ":material/arrow_forward:",
              "one number at a time: select, reject or skip, and why"),
         Page("practice", "Practice a question", views.page_practice, ":material/edit:",
              "a whole question from a code, marked part by part"),

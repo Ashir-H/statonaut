@@ -14,15 +14,15 @@ CLASS_FOR = {ACCEPT: "acc", REJECT: "rej", SKIP: "skp"}
 # The swatches match the block fills, which are translucent so that they sit
 # correctly on a light or a dark page.
 LEGEND = [("selected", "rgba(34,197,94,.55)"), ("rejected", "rgba(239,68,68,.5)"),
-          ("skipped, group full", "rgba(245,158,11,.55)"),
+          ("skipped, group fully sampled", "rgba(245,158,11,.55)"),
           ("not reached", "rgba(128,128,128,.25)")]
 
 VERDICT = {
     engine.R_IN_RANGE: "selected",
-    engine.R_OUT_OF_RANGE: "rejected, outside the numbered range",
+    engine.R_OUT_OF_RANGE: "rejected, not in the sampling frame",
     engine.R_REPEAT: "rejected, already selected",
-    engine.R_GROUP_FULL: "skipped, that group is already full",
-    engine.R_OVER_INTERVAL: "rejected, larger than the interval",
+    engine.R_GROUP_FULL: "skipped, that group is fully sampled",
+    engine.R_OVER_INTERVAL: "rejected, greater than the sampling interval",
 }
 
 

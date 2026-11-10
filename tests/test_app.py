@@ -254,6 +254,18 @@ for rule in re.finditer(r"([^{}]+)\{([^}]*)\}", STYLESHEET):
 print(f"stylesheet: readable on both themes, worst case {worst[0]:.1f}:1 "
       f"at {worst[1]}")
 
+# Streamlit's header is fixed, 60px tall, and paints over whatever is beneath
+# it. Its own top padding on the main container clears that; tightening it
+# pushed the first line of every page - the unit and syllabus caption - under
+# the header and clipped it.
+tightened = re.search(r"\.block-container\s*\{[^}]*padding-top:\s*([\d.]+)rem",
+                      STYLESHEET)
+if tightened and float(tightened.group(1)) < 5:
+    problems.append(f"the stylesheet sets the main container's top padding to "
+                    f"{tightened.group(1)}rem, which puts the first line of a page "
+                    "under Streamlit's 60px fixed header")
+print("page top: nothing tightens the main container under Streamlit's header")
+
 
 # 10. animation has to stay off the main thread and out of the server
 COMPOSITED = {"transform", "opacity"}

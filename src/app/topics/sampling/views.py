@@ -350,17 +350,22 @@ def page_learn() -> None:
         ui.from_content(content.text, content.MISTAKES)
 
 
+# The wording is the syllabus's and the mark schemes': a sampling frame, a
+# sampling interval, a group that has been fully sampled. The options are
+# stacked rather than placed side by side, because a row of four columns cuts
+# the labels short and there is no shorter way to say "not in the sampling
+# frame" that still says it.
 DRILL_OPTIONS = {
-    "simple": [("Select it", R_IN_RANGE),
-               ("Reject - outside the numbered range", R_OUT_OF_RANGE),
+    "simple": [("Select this number", R_IN_RANGE),
+               ("Reject - not in the sampling frame", R_OUT_OF_RANGE),
                ("Reject - already selected", R_REPEAT)],
-    "systematic": [("Use it as the random start", R_IN_RANGE),
-                   ("Reject - larger than the interval", R_OVER_INTERVAL),
-                   ("Reject - outside the numbered range", R_OUT_OF_RANGE)],
-    "stratified": [("Select it", R_IN_RANGE),
-                   ("Skip - that group is already full", R_GROUP_FULL),
+    "systematic": [("Use as the random start", R_IN_RANGE),
+                   ("Reject - greater than the sampling interval", R_OVER_INTERVAL),
+                   ("Reject - not in the sampling frame", R_OUT_OF_RANGE)],
+    "stratified": [("Select this number", R_IN_RANGE),
+                   ("Skip - that group is fully sampled", R_GROUP_FULL),
                    ("Reject - already selected", R_REPEAT),
-                   ("Reject - outside the numbered range", R_OUT_OF_RANGE)],
+                   ("Reject - not in the sampling frame", R_OUT_OF_RANGE)],
 }
 
 
@@ -371,18 +376,20 @@ def _explain(q: Dict, step, result) -> str:
     w = engine.label_width(hi)
     rng = f"{engine.pad(lo, w)} to {engine.pad(hi, w)}"
     if step.reason == R_OUT_OF_RANGE:
-        return f"`{value}` is outside {rng}, so there is no such member. Read the next number."
+        return (f"`{value}` is outside {rng}, so it is not in the sampling frame: no "
+                "member has that number. Read the next number.")
     if step.reason == R_REPEAT:
         return f"`{value}` has already been selected, and a member cannot be chosen twice."
     if step.reason == R_GROUP_FULL:
-        return (f"`{value}` is in {step.stratum}, and that group already has all the "
-                "members it needs. Skip it and carry on along the table.")
+        return (f"`{value}` is in {step.stratum}, which has already been fully "
+                "sampled. Skip it and carry on along the table.")
     if step.reason == R_OVER_INTERVAL:
         top = q["lo"] + result.interval - 1
         sw = engine.label_width(top)
-        return (f"`{value}` is a real member, but the interval is {result.interval}, so "
-                f"the start has to be {engine.pad(q['lo'], sw)} to {engine.pad(top, sw)}. "
-                "Being a member is not enough.")
+        return (f"`{value}` is in the sampling frame, but the sampling interval is "
+                f"{result.interval}, so the random start has to be between "
+                f"{engine.pad(q['lo'], sw)} and {engine.pad(top, sw)}. Being a member "
+                "of the population is not enough.")
     if q["kind"] == "systematic":
         return (f"`{value}` is within the first interval, so it is the random start. "
                 f"Adding {result.interval} each time gives the rest of the sample.")
@@ -393,8 +400,9 @@ def _explain(q: Dict, step, result) -> str:
 
 def page_drill() -> None:
     ui.inject()
-    ui.page_header(TOPIC_LINE, "Walk the table",
-                   "One number at a time. Decide what happens to it before you move on.")
+    ui.page_header(TOPIC_LINE, "Selecting step by step",
+                   "One number at a time. Decide what happens to it before you "
+                   "move on.")
 
     state = st.session_state.setdefault("drill", {})
     c1, c2, c3 = st.columns([2, 1, 1])
@@ -430,11 +438,9 @@ def page_drill() -> None:
         st.markdown(f"Number {i + 1} of the table is")
         ui.big(step.block)
         st.write("")
-        options = DRILL_OPTIONS[kind]
-        cols = st.columns(len(options))
-        for col, (text, reason) in zip(cols, options):
-            if col.button(text, key=f"drill:{state['seed']}:{i}:{reason}",
-                          use_container_width=True):
+        for text, reason in DRILL_OPTIONS[kind]:
+            if st.button(text, key=f"drill:{state['seed']}:{i}:{reason}",
+                         use_container_width=True):
                 ok = reason == step.reason
                 state["right" if ok else "wrong"] += 1
                 state["last"] = (ok, _explain(q, step, result))

@@ -14,7 +14,10 @@ CSS = """
    operating system disagree. So nothing here sets a background without
    letting the text keep the theme's own colour: fills are translucent greys
    and tints that sit correctly on a white or a near-black page. */
-.block-container {padding-top: 2.1rem;}
+/* No override of the main container's top padding. Streamlit's own value
+   clears its fixed header, which is 60px tall and paints over whatever is
+   beneath it; tightening the gap to 2.1rem put the first line of a page - the
+   unit and syllabus caption - underneath that header and clipped it. */
 
 .mono {font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
        font-size: 1.12rem; letter-spacing: .04em; line-height: 2.6; margin: .2rem 0 .4rem;}

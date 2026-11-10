@@ -36,7 +36,7 @@ lesson plan can link straight to one: `/sampling_drill`, `/sampling_practice`.
 | Page | What it is for |
 |---|---|
 | How it is done | The reading rule, then a tab per method: the steps, where marks are lost, how it is marked, and a worked example from our own papers. |
-| Walk the table | The drill. One number at a time, the student decides select / reject / skip and is told why. Every decision is scored. |
+| Selecting step by step | The drill. One number at a time, the student decides select / reject / skip and is told why, in the syllabus's own words. Every decision is scored. |
 | Practice a question | A whole question, generated from a four-digit code, with Cambridge-style marking and a number-by-number model answer. Five types, including "smallest possible sample size" and "is this sample representative?". |
 | From our papers | The twelve questions already set in class: the Unit 1 deck examples, the random number tables worksheet, and the CA1 retake. |
 
