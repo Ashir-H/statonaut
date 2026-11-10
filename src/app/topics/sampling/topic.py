@@ -21,7 +21,5 @@ TOPIC = Topic(
              "one number at a time: select, reject or skip, and why"),
         Page("practice", "Practice a question", views.page_practice, ":material/edit:",
              "a whole question from a code, marked part by part"),
-        Page("papers", "From our papers", views.page_bank, ":material/description:",
-             "the twelve already set in class, answers already checked"),
     ),
 )

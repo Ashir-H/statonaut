@@ -16,7 +16,7 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 
 from app import registry  # noqa: E402
 from app.core import scoring  # noqa: E402
-from app.topics.sampling import content, engine, generate, views  # noqa: E402
+from app.topics.sampling import engine, generate, views  # noqa: E402
 
 ENTRY = str(ROOT / "streamlit_app.py")
 problems = []
@@ -170,17 +170,6 @@ for kind in views.KIND_NAMES:
         if correct:
             print(f"practice {kind:15} correct answer scored "
                   f"{t['marks']}/{t['available']}")
-
-# 7. every bank question renders and marks
-at = open_page(*_find("papers"))
-for item in content.questions():
-    at.selectbox(key="bank_choice").set_value(item["id"]).run()
-    complain(f"bank {item['id']}", at)
-    submit = [b for b in at.button if "Mark my answer" in str(b.label)]
-    if submit:
-        submit[0].click().run()
-        complain(f"bank {item['id']} submit", at)
-print(f"bank: {len(content.questions())} questions rendered and marked")
 
 # 8. the New question button really draws a new question
 practice = _find("practice")

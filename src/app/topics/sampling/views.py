@@ -280,19 +280,21 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
 # ------------------------------------------------------------------- pages
 
 
+EXAMPLE_CODE = 1204   # the worked examples on "How it is done"
+
+
 def page_learn() -> None:
     ui.inject()
     ui.page_header(TOPIC_LINE, "How it is done")
     tabs = st.tabs(["Reading the table", "Simple random", "Systematic", "Stratified",
                     "Representative?", "In the exam"])
-    try:
-        bank = content.questions()
-    except ContentError as exc:
-        bank = []
-        st.warning(f"Content needs attention: {exc}")
-
     def example_for(kind):
-        return next((q for q in bank if q["kind"] == kind), None)
+        """A worked example, generated like any other question.
+
+        A fixed code, so the example on this page is the same one every time
+        and can be referred to in a lesson.
+        """
+        return generate.build(kind, EXAMPLE_CODE)
 
     with tabs[0]:
         ui.from_content(content.text, content.READING)
@@ -331,8 +333,8 @@ def page_learn() -> None:
             ui.from_content(doc.section, content.MARKS)
             example = example_for(kind)
             if example:
-                with st.expander(f"A worked example - {example['source']}"):
-                    ui.scenario(example["setting"], example["task"])
+                with st.expander(f"A worked example (code {EXAMPLE_CODE})"):
+                    ui.scenario(example["setting"], task_text(example))
                     table.printed_row(example["row"])
                     res = solve(example)
                     table.walkthrough(res, example["row"], read_width(example))
@@ -476,20 +478,3 @@ def page_practice() -> None:
                                  format_func=lambda k: KIND_NAMES[k])
     attempt(generate.build(kind, seed), prefix=f"practice:{kind}:{seed}")
     st.caption("Share the code to give someone the same question.")
-
-
-def page_bank() -> None:
-    ui.inject()
-    ui.page_header(TOPIC_LINE, "Questions from our own papers",
-                   "Every one of these has been set in class, with its answer "
-                   "already checked.")
-    try:
-        bank = content.questions()
-    except ContentError as exc:
-        st.error(f"Content needs attention: {exc}")
-        return
-    labels = {q["id"]: f"{q['source']} - {KIND_NAMES[q['kind']]}" for q in bank}
-    chosen = st.selectbox("Question", [q["id"] for q in bank],
-                          format_func=lambda i: labels[i], key="bank_choice")
-    q = next(x for x in bank if x["id"] == chosen)
-    attempt(q, prefix=f"bank:{chosen}", source=q["source"], note=q.get("note", ""))

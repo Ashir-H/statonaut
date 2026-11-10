@@ -1,7 +1,8 @@
-"""The content files: readable by the app, and still giving the printed answers.
+"""The content files, and the archived questions' answers.
 
-The questions in `content/sampling/questions.toml` were set in class and their
-answers are recorded in the project notes. This checks that editing the file
+The questions in `archive/sampling-questions.toml` were set in class and their
+answers are recorded in the project notes. The app no longer shows them, but
+they still check the engine. This checks that editing the file
 has not changed any of them, and that every question can be completed from the
 row it is given.
 
@@ -14,8 +15,12 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+import tomllib  # noqa: E402
+
 from app.core.library import ContentError  # noqa: E402
 from app.topics.sampling import content, engine  # noqa: E402
+
+ARCHIVE = ROOT / "archive" / "sampling-questions.toml"
 
 problems = []
 
@@ -24,8 +29,17 @@ complaints = content.check()
 problems += complaints
 print("content check:", "no complaints" if not complaints else complaints)
 
-bank = content.questions()
-print(f"questions.toml: {len(bank)} questions")
+# The twelve set in class are archived rather than shown in the app, but they
+# are still checked: they are the only questions whose answers are printed on
+# a paper somewhere, so they are what proves the engine right.
+raw = tomllib.loads(ARCHIVE.read_text(encoding="utf-8"))["question"]
+bank = []
+for item in raw:
+    q = dict(item)
+    if q["kind"] == "stratified":
+        q["strata"] = [engine.Stratum(x["name"], x["lo"], x["hi"]) for x in q["strata"]]
+    bank.append(q)
+print(f"{ARCHIVE.name}: {len(bank)} questions")
 
 # ---- every question can be finished from the row it is given ---------------
 for q in bank:

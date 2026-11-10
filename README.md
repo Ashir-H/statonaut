@@ -47,7 +47,8 @@ student gets the same table.
 
 ```
 content/                      everything a student reads, as Markdown
-content/sampling/             one folder per topic, plus questions.toml
+content/sampling/             one folder per topic
+archive/                      material kept for reference, not loaded
 streamlit_app.py              router: builds the sidebar from the registry
 src/app/registry.py           Topic and Page, and the list of topics
 src/app/home.py               the front page, written from the registry
@@ -73,8 +74,8 @@ without it installed.
 
 No page has its text in the code. Edit the Markdown in `content/`, save, and
 reload the page in the browser — see [content/README.md](content/README.md) for
-which file is which. Questions live in `content/sampling/questions.toml`, and
-adding one needs no code either.
+which file is which. Questions are generated, so there is no
+question list to maintain.
 
 If a file or a heading the page looks for goes missing, the page says so in
 place, naming the file, and carries on.

@@ -20,7 +20,6 @@ file show up as headings on the page.
 | `exam-notes.md` | the In the exam tab |
 | `mistakes.md` | the list at the foot of the In the exam tab |
 | `interval-marks.md` | the mark-scheme note on the "smallest possible sample size" question |
-| `questions.toml` | the questions on "Questions from our own papers" |
 
 ### The four method files have headings the app looks for
 
@@ -40,38 +39,9 @@ warnings sit side by side in two columns:
 The `#` title line is the heading shown above the tab's content. If a heading
 goes missing, the page says so in place, naming the file — it does not break.
 
-### questions.toml
+### Questions
 
-Each `[[question]]` is one question. The wording is yours to change; the
-numbers decide the answer, and the app works the answer out for itself rather
-than storing one.
-
-```toml
-[[question]]
-id = "ws-1"                     # must be unique
-source = "..."                  # shown under the question
-kind = "simple"                 # simple | systematic | stratified
-setting = "..."                 # the situation
-task = "..."                    # what the student has to do
-lo = 1                          # lowest label in the population
-hi = 48                         # highest label
-n = 6                           # sample size asked for
-marks = 3                       # what the selection is worth
-row = "63 17 42 90 05 ..."      # the table, printed in pairs
-note = "..."                    # optional, shown with the mark scheme
-```
-
-A stratified question has `strata` instead of `lo` and `hi`:
-
-```toml
-strata = [
-    { name = "Junior", lo = 1, hi = 30 },
-    { name = "Senior", lo = 31, hi = 50 },
-    { name = "Veteran", lo = 51, hi = 60 },
-]
-```
-
-Adding a question needs no code: copy a block, change the values, give it a new
-`id`. `tests/test_content.py` checks that every question can actually be
-completed from the row it is given, and that the twelve already set in class
-still produce the answers printed on those papers.
+Every question in the app is generated from a four-digit code, so there is no
+list of questions to keep up to date. The twelve set in class are kept in
+`archive/sampling-questions.toml`, which the app does not read; see the README
+there.
