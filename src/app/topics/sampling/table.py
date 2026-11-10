@@ -94,6 +94,52 @@ def coloured_sample(result, strata) -> None:
                for i, s in enumerate(strata)])
 
 
+WIDTHS = (1, 2, 3, 4)
+
+
+def _width_label(width: int) -> str:
+    return "1 digit" if width == 1 else f"{width} digits"
+
+
+@st.fragment
+def regrouper(row: str, key: str, *, labelled: str = "") -> None:
+    """Let the reader regroup the table themselves, and watch it happen.
+
+    The table is printed in pairs. Choosing a different block width slides the
+    digits into their new blocks and lists the numbers that come out - without
+    saying whether that width is the right one for this question. Deciding
+    that is the thing being learnt.
+
+    A fragment, so changing the width redraws this and nothing else: no
+    content files re-read, no answer box rebuilt, no page scrolled.
+    """
+    digits = engine.digits(row)
+    remembered = st.session_state.setdefault("regroup", {})
+    was = remembered.get(key, 2)
+
+    chosen = st.segmented_control(
+        "Read the table in blocks of", list(WIDTHS), default=was,
+        format_func=_width_label, key=f"regroup:{key}",
+        help="The table is printed in pairs. That is how it is printed, not "
+             "necessarily how this question needs it read.")
+    if chosen is None:
+        chosen = was
+    remembered[key] = chosen
+    moved = chosen != was
+
+    st.markdown(motion.regroup(digits, was, chosen), unsafe_allow_html=True)
+    numbers = engine.read_blocks(row, chosen)
+    tail = len(digits) - len(numbers) * chosen
+    note = f"Reading in blocks of {chosen} gives {len(numbers)} numbers"
+    if tail:
+        note += f", with {tail} digit{'s' if tail > 1 else ''} left over"
+    st.caption(note + (f". {labelled}" if labelled else "."))
+    st.markdown(
+        motion.sequence(numbers, animation=motion.RISE if moved else None,
+                        wrapper_class="chips"),
+        unsafe_allow_html=True)
+
+
 def walkthrough(result, row: str, read_width: int) -> None:
     """The model answer: every block, in order, with the reason for each."""
     blocks(row, read_width, result.steps)
