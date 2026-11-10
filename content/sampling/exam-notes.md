@@ -8,7 +8,7 @@ ladder: all correct, then one error or omission, then two.
 mark in its own right.
 
 **One proportion, written out.** In a stratified question one correct
-`group/population x sample` line earns a method mark even if the arithmetic
+$\frac{\text{stratum}}{\text{population}} \times \text{sample}$ line earns a method mark even if the arithmetic
 after it is wrong.
 
 **`oe`, everywhere.** "Or equivalent" appears 234 times across the 40 mark

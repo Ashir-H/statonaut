@@ -20,9 +20,10 @@ __all__ = ["Award", "mark_sample", "mark_value", "mark_count", "parse_numbers",
 # --------------------------------------------------- one attempt at a question
 
 
-def part(label: str, award: Award, model: str) -> Dict[str, Any]:
+def part(label: str, award: Award, model: str, maths: bool = False) -> Dict[str, Any]:
+    """One marked part. `maths` when the model answer is LaTeX, not a value."""
     return {"label": label, "marks": award.marks, "available": award.available,
-            "model": model}
+            "model": model, "maths": maths}
 
 
 def remember(prefix: str, signature: str, parts: Sequence[Dict[str, Any]]) -> None:
@@ -55,8 +56,11 @@ def show_outcome(parts: Sequence[Dict[str, Any]]) -> int:
     for p in parts:
         verdict = ("correct" if p["marks"] == p["available"]
                    else "part marks" if p["marks"] else "not right")
+        # A model answer that is a calculation is LaTeX, and has to reach the
+        # renderer as such; a code span would show the markup instead.
+        shown = p["model"] if p.get("maths") else f"`{p['model']}`"
         st.markdown(f"- **{p['label']}** - {p['marks']}/{p['available']}, {verdict}. "
-                    f"Answer: `{p['model']}`")
+                    f"Answer: {shown}")
     return got
 
 

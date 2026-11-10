@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import streamlit as st
 
-from app.core import scoring, ui
+from app.core import maths, scoring, ui
 from app.core.library import ContentError
 
 from . import content, engine, generate, table
@@ -108,7 +108,8 @@ def _sizes_part(q: Dict, given: Sequence[Optional[int]]) -> Dict:
     award = scoring.mark_count([sh.count for sh in shares],
                                [int(g) if g is not None else -1 for g in given], 2)
     return scoring.part("The group sizes", award,
-                        "; ".join(sh.working(population, q["n"]) for sh in shares))
+                        maths.joined([sh.working(population, q["n"]) for sh in shares],
+                                     ";  "), maths=True)
 
 
 def _pairs(picks: Dict[str, List[int]]) -> List[Tuple[str, int]]:
@@ -157,9 +158,11 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                                    key=f"{prefix}:sys")
             submitted = st.form_submit_button("Mark my answer", type="primary")
             if submitted:
-                parts.append(scoring.part("The interval",
-                                          scoring.mark_value(result.interval, int(k_given)),
-                                          str(result.interval)))
+                parts.append(scoring.part(
+                    "The interval",
+                    scoring.mark_value(result.interval, int(k_given)),
+                    maths.inline(maths.quotient(q["population"], q["n"],
+                                                result.interval)), maths=True))
                 parts.append(scoring.part(
                     "The sample",
                     scoring.mark_sample(result.sample, scoring.parse_numbers(answer), 2),
@@ -198,12 +201,14 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                                    step=1, value=1, key=f"{prefix}:size")
             submitted = st.form_submit_button("Mark my answer", type="primary")
             if submitted:
-                parts.append(scoring.part("The difference",
-                                          scoring.mark_value(q["difference"], int(diff)),
-                                          str(q["difference"])))
+                parts.append(scoring.part(
+                    "The difference", scoring.mark_value(q["difference"], int(diff)),
+                    maths.inline(f"{q['b']} - {q['a']} = {q['difference']}"),
+                    maths=True))
                 parts.append(scoring.part(
                     "The sample size", scoring.mark_value(q["answer"], int(size)),
-                    f"{q['population']} / {q['difference']} = {q['answer']}"))
+                    maths.inline(maths.quotient(q["population"], q["difference"],
+                                                q["answer"])), maths=True))
 
         else:   # representative
             st.write("**How many of each group would you expect in the sample?**")
@@ -223,8 +228,9 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                 parts.append(scoring.part(
                     "The expected numbers",
                     scoring.mark_count(q["expected"], [int(e) for e in expected], 1),
-                    "; ".join(f"{size}/{q['population']} \u00d7 {q['n']} = {want}"
-                              for size, want in zip(q["sizes"], q["expected"]))))
+                    maths.joined([maths.share(size, q["population"], q["n"], want)
+                                  for size, want in zip(q["sizes"], q["expected"])],
+                                 ";  "), maths=True))
                 parts.append(scoring.part(
                     "The conclusion",
                     scoring.mark_value(q["fair"], verdict.startswith("Yes")),
@@ -242,8 +248,12 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
 
     if q["kind"] == "representative":
         st.markdown("**A conclusion that would earn the third mark**")
-        pairs = ", ".join(f"{g}: {o} where {e} was expected"
-                          for g, o, e in zip(q["groups"], q["observed"], q["expected"]))
+        pairs = ";  ".join(
+            f"{group}: {seen} where "
+            + maths.inline(maths.share(size, q["population"], q["n"], want))
+            + " was expected"
+            for group, size, seen, want in zip(q["groups"], q["sizes"],
+                                               q["observed"], q["expected"]))
         st.info(f"The sample contains {pairs}. "
                 + ("The two sets of numbers agree, so the sample is representative."
                    if q["fair"] else
@@ -262,7 +272,8 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
             if q["kind"] == "stratified":
                 population = sum(s.size for s in q["strata"])
                 st.markdown("**The group sizes**  \n" + "  \n".join(
-                    sh.working(population, q["n"]) for sh in result.shares))
+                    maths.inline(sh.working(population, q["n"]))
+                    for sh in result.shares))
                 table.coloured_sample(result, q["strata"])
 
     with st.expander("What the mark scheme rewards"):
@@ -340,7 +351,8 @@ def page_learn() -> None:
                     if kind == "stratified":
                         population = sum(s.size for s in example["strata"])
                         st.markdown("**The group sizes**  \n" + "  \n".join(
-                            sh.working(population, example["n"]) for sh in res.shares))
+                            maths.inline(sh.working(population, example["n"]))
+                            for sh in res.shares))
                     st.markdown("**The sample**")
                     table.sample_chips(res.sample, res.width)
 
@@ -400,6 +412,20 @@ FIND_THE_SPLIT = (
     "the sample has the same make-up as the population. Work out how many come "
     "from each one before you read anything from the table."
 )
+
+# The formulas a walkthrough hands over. What is filled in is what does not
+# amount to the answer: for a stratified sample the population and the sample
+# size, since each stratum's own size still has to be read off the table and
+# three calculations done. For a systematic sample nothing is filled in - one
+# division is the whole answer, so only the method is given.
+def split_formula(population: int, sample: int) -> str:
+    return maths.share(maths.words("size of the stratum"), population, sample)
+
+
+def interval_formula() -> str:
+    return "k = " + maths.fraction(maths.words("size of the population"),
+                                   maths.words("size of the sample"))
+
 
 WHEN_TO_STOP = {
     "simple": "Read on until the sample is full.",
@@ -500,9 +526,10 @@ def page_drill() -> None:
     result = solve(q)
     width = read_width(q)
     ui.scenario(q["setting"], task_text(q))
-    table.printed_row(q["row"])
-
     stage = state.get("stage") or FIRST_STAGE.get(kind, "width")
+    if stage != "numbers":
+        table.printed_row(q["row"])
+
     if stage == "interval":
         _find_the_interval(q, result, state)
     elif stage == "split":
@@ -522,6 +549,8 @@ def _find_the_interval(q: Dict, result, state: Dict) -> None:
     """
     st.markdown("**Step 1 of 3 · What is the sampling interval?**")
     st.info(FIND_THE_INTERVAL)
+    st.latex(interval_formula())
+    st.caption("Both of those are in the question above.")
     with st.form(f"interval:{state['seed']}"):
         given = st.number_input("The sampling interval", min_value=1, step=1, value=1,
                                 key=f"interval:{state['seed']}:value")
@@ -568,6 +597,10 @@ def _find_the_split(q: Dict, result, state: Dict) -> None:
     st.markdown(f"| Stratum | In the population |\n|---|---:|\n{rows}"
                 f"| **Total** | **{population}** |")
     st.caption(f"A sample of {q['n']} is wanted.")
+    st.markdown("For each stratum:")
+    st.latex(split_formula(population, q["n"]))
+    st.caption("Round to a whole number of members, and check they total the "
+               "size of the sample.")
 
     want = [sh.count for sh in result.shares]
     with st.form(f"split:{state['seed']}"):
@@ -586,7 +619,8 @@ def _find_the_split(q: Dict, result, state: Dict) -> None:
     answer = state.get("split_answer")
     if answer is None:
         return
-    working = ";  ".join(sh.working(population, q["n"]) for sh in result.shares)
+    working = maths.joined([sh.working(population, q["n"])
+                            for sh in result.shares], ";  ")
     if answer == want:
         st.success(f"Yes. {working}. They add to {q['n']}, the size of the sample.")
         if st.button("Next: how to read the table", type="primary"):
@@ -648,6 +682,7 @@ def _rule_on_each_number(q: Dict, result, width: int, state: Dict) -> None:
     last = "3 of 3" if q["kind"] in ("systematic", "stratified") else "2 of 2"
     st.markdown(f"**Step {last} · Reading in blocks of {width}**")
     st.caption(WHEN_TO_STOP[q["kind"]])
+    table.progress(q, result, state["i"], width)
     i = state["i"]
     total = len(result.steps)
     table.blocks(q["row"], width, result.steps, revealed=i,

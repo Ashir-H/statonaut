@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from app.core import maths
+
 ACCEPT = "accept"
 REJECT = "reject"
 SKIP = "skip"
@@ -101,7 +103,8 @@ class StratumShare:
         return self.exact.denominator == 1
 
     def working(self, population: int, sample: int) -> str:
-        return f"{self.size}/{population} × {sample} = {self.count}"
+        """The line a mark scheme wants to see, as LaTeX."""
+        return maths.share(self.size, population, sample, self.count)
 
 
 def strata_shares(strata: Sequence[Stratum], sample: int) -> List[StratumShare]:

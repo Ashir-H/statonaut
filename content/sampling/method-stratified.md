@@ -7,7 +7,7 @@ proportion to its size**, so the sample has the same make-up as the population.
 
 ## The method
 
-1. For each group: **group size / population size x sample size**. Write the
+1. For each stratum: $\frac{\text{size of the stratum}}{\text{size of the population}} \times \text{size of the sample}$. Write the
    calculation, not just the answer.
 2. Check the group sizes add up to the sample size.
 3. Read along the table **once**. Send each number to the group it belongs to.

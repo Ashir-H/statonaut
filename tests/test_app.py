@@ -447,6 +447,25 @@ for kind in views.KIND_NAMES:
 print(f"answerable: all {len(views.KIND_NAMES)} question types state their task and "
       "show every number needed to answer")
 
+# 12. mathematics is handed to KaTeX, not printed as text in a code span
+from app.core import maths as core_maths  # noqa: E402
+
+sample_share = core_maths.share(36, 240, 40, 6)
+if "\\frac" not in sample_share or "\u00d7" in sample_share:
+    problems.append(f"a stratum's share is not LaTeX: {sample_share}")
+marked = scoring.part("The group sizes", scoring.Award(2, 2),
+                      core_maths.inline(sample_share), maths=True)
+if not marked.get("maths"):
+    problems.append("a model answer holding a formula is not marked as mathematics, "
+                    "so it will be shown in a code span and never rendered")
+for expression in (core_maths.inline(sample_share),
+                   core_maths.joined([sample_share, sample_share], ";  ")):
+    if expression.count("$") % 2:
+        problems.append(f"unbalanced dollars in {expression}")
+    if " $" in expression.replace(";  $", "") or "$ " in expression:
+        problems.append(f"a space just inside the dollars stops KaTeX: {expression}")
+print("mathematics: formulas are LaTeX, model answers that hold one say so")
+
 print()
 if problems:
     print(f"{len(problems)} PROBLEM(S):")

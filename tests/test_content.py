@@ -104,6 +104,19 @@ for qid, printed in PRINTED_GROUPS.items():
 print(f"printed answers: {len(PRINTED) + len(PRINTED_GROUPS)} questions checked "
       "against the papers")
 
+# ---- formulas are LaTeX, and the dollars that delimit them are paired ------
+for name in content.PAGES + tuple(f"method-{k}" for k in content.METHOD_KINDS):
+    body = content.text(name)
+    if body.count("$") % 2:
+        problems.append(f"{name}.md has an odd number of $ signs, so a formula "
+                        "is left unclosed and the rest of the page renders as "
+                        "mathematics")
+    for crude in (" x sample", "/ population", "\u00f7 "):
+        if crude in body:
+            problems.append(f"{name}.md writes a formula as plain text ({crude!r}); "
+                            "use LaTeX between dollars so it renders")
+print("formulas: written as LaTeX, every expression closed")
+
 # ---- a missing file or heading is reported, not raised at the page ---------
 try:
     content.LIBRARY.text("no-such-file")

@@ -71,6 +71,45 @@ def sample_chips(values: Sequence[int], width: int, *, animate: bool = True) -> 
                 unsafe_allow_html=True)
 
 
+def progress(q, result, read_so_far: int, width: int) -> None:
+    """What has been settled, and how far the selection has got.
+
+    Everything needed to rule on the next number, in one place: which numbers
+    belong where, how many each stratum still wants, and how many are found.
+    Without it the reader has to scroll back to the question for the ranges
+    and to an earlier step for the split.
+    """
+    taken = [s for s in result.steps[:read_so_far] if s.action == ACCEPT]
+
+    if q["kind"] == "stratified":
+        rows = []
+        for stratum, share in zip(q["strata"], result.shares):
+            got = sum(1 for s in taken if s.stratum == stratum.name)
+            mark = f"{got} \u2714" if got >= share.count else str(got)
+            rows.append(f"| {stratum.name} | {stratum.label_range(width)} "
+                        f"| {share.count} | {mark} |")
+        st.markdown("| Stratum | Its numbers | Needs | Found |\n|---|---|---:|---:|\n"
+                    + "\n".join(rows))
+        return
+
+    if q["kind"] == "systematic":
+        top = q["lo"] + result.interval - 1
+        start = f"{engine.pad(result.start, width)}" if taken else "not yet found"
+        st.markdown("| Looking for | Numbers that can be it | Interval |\n"
+                    "|---|---|---:|\n"
+                    f"| the random start | {engine.pad(q['lo'], width)}\u2013"
+                    f"{engine.pad(top, width)} | {result.interval} |\n"
+                    f"| found | {start} | |")
+        return
+
+    lo, hi = q["lo"], q["hi"]
+    got = len(taken)
+    mark = f"{got} \u2714" if got >= q["n"] else str(got)
+    st.markdown("| The numbers | Needs | Found |\n|---|---:|---:|\n"
+                f"| {engine.pad(lo, width)}\u2013{engine.pad(hi, width)} "
+                f"| {q['n']} | {mark} |")
+
+
 def coloured_sample(result, strata) -> None:
     """The sample in the order the numbers came off the table.
 

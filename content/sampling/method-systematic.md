@@ -8,7 +8,7 @@ after it is arithmetic.
 
 ## The method
 
-1. Find the interval: **k = population size / sample size**.
+1. Find the interval: $k = \frac{\text{size of the population}}{\text{size of the sample}}$.
 2. The random start must be one of the first *k* members, so read the table in
    blocks wide enough for the **largest possible start**, which is *k* - not
    the width of the population labels.
