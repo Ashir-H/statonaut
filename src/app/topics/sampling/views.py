@@ -375,6 +375,9 @@ DRILL_OPTIONS = {
 # What the table is being used to choose decides how wide the numbers are, and
 # when to stop reading. This is the distinction the drill exists to teach: in a
 # systematic sample the table picks one thing only, the random start.
+# What each method has to settle before the table is any use.
+FIRST_STAGE = {"systematic": "interval", "stratified": "split"}
+
 WHAT_THE_TABLE_CHOOSES = {
     "simple": "You are choosing every member of the sample straight from the "
               "table, so the numbers have to reach the largest label in the "
@@ -391,6 +394,12 @@ FIND_THE_INTERVAL = (
     "A systematic sample takes every kth member, counting on from a random "
     "start. Everything else here depends on k, so work it out before you read "
     "anything from the table."
+)
+
+FIND_THE_SPLIT = (
+    "A stratified sample takes from each stratum in proportion to its size, so "
+    "the sample has the same make-up as the population. Work out how many come "
+    "from each one before you read anything from the table."
 )
 
 WHEN_TO_STOP = {
@@ -483,9 +492,9 @@ def page_drill() -> None:
     if c2.button("New table", use_container_width=True) or state.get("kind") != kind:
         state.clear()
         state.update(kind=kind, seed=generate.new_seed(),
-                     stage="interval" if kind == "systematic" else "width",
+                     stage=FIRST_STAGE.get(kind, "width"),
                      i=0, right=0, wrong=0, last=None, width_choice=None,
-                     interval_answer=None)
+                     interval_answer=None, split_answer=None)
     c3.caption(f"Code {state.get('seed', '')}")
 
     q = generate.build(kind, state["seed"])
@@ -494,9 +503,11 @@ def page_drill() -> None:
     ui.scenario(q["setting"], task_text(q))
     table.printed_row(q["row"])
 
-    stage = state.get("stage") or ("interval" if kind == "systematic" else "width")
+    stage = state.get("stage") or FIRST_STAGE.get(kind, "width")
     if stage == "interval":
         _find_the_interval(q, result, state)
+    elif stage == "split":
+        _find_the_split(q, result, state)
     elif stage == "width":
         _choose_the_width(q, result, width, state)
     else:
@@ -545,15 +556,68 @@ def _find_the_interval(q: Dict, result, state: Dict) -> None:
              f"{result.interval}. Enter that to go on.")
 
 
+def _find_the_split(q: Dict, result, state: Dict) -> None:
+    """Step one, stratified only: how many come from each stratum.
+
+    Shown as a banner above the table, this is read past. Produced first, it
+    is the thing the rest of the question is built on.
+    """
+    st.markdown("**Step 1 of 3 · How many from each stratum?**")
+    st.info(FIND_THE_SPLIT)
+    population = sum(x.size for x in q["strata"])
+    rows = "".join(f"| {x.name} | {x.size} |\n" for x in q["strata"])
+    st.markdown(f"| Stratum | In the population |\n|---|---:|\n{rows}"
+                f"| **Total** | **{population}** |")
+    st.caption(f"A sample of {q['n']} is wanted.")
+
+    want = [sh.count for sh in result.shares]
+    with st.form(f"split:{state['seed']}"):
+        cols = st.columns(len(q["strata"]))
+        given = [c.number_input(x.name, min_value=0, step=1, value=0,
+                                key=f"split:{state['seed']}:{x.name}")
+                 for c, x in zip(cols, q["strata"])]
+        checked = st.form_submit_button("Check", type="primary")
+    if checked:
+        state["split_answer"] = [int(g) for g in given]
+        state["split_tries"] = state.get("split_tries", 0) + 1
+        if [int(g) for g in given] != want:
+            state["split_wrong"] = state.get("split_wrong", 0) + 1
+        st.rerun()
+
+    answer = state.get("split_answer")
+    if answer is None:
+        return
+    working = ";  ".join(sh.working(population, q["n"]) for sh in result.shares)
+    if answer == want:
+        st.success(f"Yes. {working}. They add to {q['n']}, the size of the sample.")
+        if st.button("Next: how to read the table", type="primary"):
+            state["stage"] = "width"
+            st.rerun()
+        return
+    if sum(answer) != q["n"]:
+        st.error(f"Those add to {sum(answer)}, but the sample is {q['n']}. "
+                 "Every member of the sample comes from one stratum, so the "
+                 "numbers have to total the sample size.")
+    elif state.get("split_tries", 0) < 2:
+        st.error(f"They add to {q['n']}, but they are not in proportion. Each "
+                 "stratum's share is its size divided by the size of the "
+                 "population, times the size of the sample.")
+    if state.get("split_tries", 0) >= 2:
+        st.error(f"The proportions are {working}. Enter those to go on.")
+
+
 def _choose_the_width(q: Dict, result, width: int, state: Dict) -> None:
     """Step two: what is the table being used to choose, and how wide is it?"""
-    if q["kind"] == "systematic":
-        st.markdown("**Step 2 of 3 · How many digits do you read together?**")
-    else:
-        st.markdown("**Step 1 of 2 · How many digits do you read together?**")
+    staged = q["kind"] in ("systematic", "stratified")
+    st.markdown(f"**Step {'2 of 3' if staged else '1 of 2'} · How many "
+                "digits do you read together?**")
     st.info(WHAT_THE_TABLE_CHOOSES[q["kind"]])
     if q["kind"] == "systematic":
         st.caption(f"You found the interval: **{result.interval}**.")
+    if q["kind"] == "stratified":
+        st.caption("You found the split: **"
+                   + "**, **".join(f"{sh.count} {sh.name}" for sh in result.shares)
+                   + "**.")
 
     cols = st.columns(4)
     for col, choice in zip(cols, (1, 2, 3, 4)):
@@ -582,14 +646,9 @@ def _choose_the_width(q: Dict, result, width: int, state: Dict) -> None:
 
 def _rule_on_each_number(q: Dict, result, width: int, state: Dict) -> None:
     """Step two: the numbers themselves, one at a time."""
-    last = "3 of 3" if q["kind"] == "systematic" else "2 of 2"
+    last = "3 of 3" if q["kind"] in ("systematic", "stratified") else "2 of 2"
     st.markdown(f"**Step {last} · Reading in blocks of {width}**")
     st.caption(WHEN_TO_STOP[q["kind"]])
-    if q["kind"] == "stratified":
-        population = sum(x.size for x in q["strata"])
-        st.info("The sample splits as  " + " &nbsp;\u00b7&nbsp; ".join(
-            sh.working(population, q["n"]) for sh in result.shares))
-
     i = state["i"]
     total = len(result.steps)
     table.blocks(q["row"], width, result.steps, revealed=i,
@@ -626,9 +685,13 @@ def _rule_on_each_number(q: Dict, result, width: int, state: Dict) -> None:
         judged = state["right"] + state["wrong"]
         if judged:
             st.metric("Decisions you got right", f"{state['right']} / {judged}")
+        if state.get("split_wrong"):
+            st.caption(f"The split took {state['split_wrong'] + 1} attempts.")
         if state.get("interval_wrong"):
             st.caption(f"The sampling interval took "
                        f"{state['interval_wrong'] + 1} attempts.")
+        if state.get("split_wrong"):
+            st.caption(f"The split took {state['split_wrong'] + 1} attempts.")
         if state.get("interval_wrong"):
             st.caption(f"The sampling interval took {state['interval_wrong'] + 1} "
                        "attempts.")
@@ -638,10 +701,11 @@ def _rule_on_each_number(q: Dict, result, width: int, state: Dict) -> None:
                        "the table.")
         if st.button("Another table", type="primary"):
             state.update(seed=generate.new_seed(),
-                         stage="interval" if q["kind"] == "systematic" else "width",
+                         stage=FIRST_STAGE.get(q["kind"], "width"),
                          i=0, right=0, wrong=0, last=None, width_choice=None,
                          width_tries=0, width_wrong=0, interval_answer=None,
-                         interval_tries=0, interval_wrong=0)
+                         interval_tries=0, interval_wrong=0, split_answer=None,
+                         split_tries=0, split_wrong=0)
             st.rerun()
 
     if state.get("last"):

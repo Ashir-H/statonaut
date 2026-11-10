@@ -98,6 +98,22 @@ for kind in views.TABLE_KINDS:
     seed = at.session_state["drill"]["seed"]
     q0 = generate.build(kind, seed)
     solved0 = views.solve(q0)
+    if kind == "stratified":
+        # the split has to be worked out before anything else happens
+        want = [sh.count for sh in solved0.shares]
+        for stratum, count in zip(q0["strata"], want):
+            at.number_input(key=f"split:{seed}:{stratum.name}").set_value(count + 1)
+        [b for b in at.button if "Check" in str(b.label)][0].click().run()
+        complain(f"drill {kind} wrong split", at)
+        if at.session_state["drill"]["stage"] != "split":
+            problems.append(f"drill {kind}: a wrong split let the student through")
+        for stratum, count in zip(q0["strata"], want):
+            at.number_input(key=f"split:{seed}:{stratum.name}").set_value(count)
+        [b for b in at.button if "Check" in str(b.label)][0].click().run()
+        [b for b in at.button if "how to read the table" in str(b.label)][0].click().run()
+        complain(f"drill {kind} right split", at)
+        if at.session_state["drill"]["stage"] != "width":
+            problems.append(f"drill {kind}: the right split did not open step two")
     if kind == "systematic":
         # the interval has to be worked out before anything else happens
         at.number_input(key=f"interval:{seed}:value").set_value(solved0.interval + 1)
@@ -137,7 +153,8 @@ for kind in views.TABLE_KINDS:
     if drill["wrong"] or drill["right"] != len(steps):
         problems.append(f"drill {kind}: scored {drill['right']} right, "
                         f"{drill['wrong']} wrong, of {len(steps)}")
-    opening = "interval, then width" if kind == "systematic" else "width"
+    opening = {"systematic": "interval, then width",
+               "stratified": "split, then width"}.get(kind, "width")
     print(f"drill {kind:11} {opening} ruled on first, then {len(steps)} "
           "decisions, all scored right")
     again = [b for b in at.button if "Another table" in str(b.label)]
