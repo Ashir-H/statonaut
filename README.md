@@ -188,13 +188,13 @@ The primitives:
 | | |
 |---|---|
 | `motion.regroup(chars, was, now)` | the same sequence gathered into blocks of a new width — the digits of a table sliding from pairs into threes |
-| `motion.reorder(labels, order)` | one row of items moving to a new order, each sliding from where it was |
+| `motion.reorder(labels, order)` | one row of items moving to a new order, each sliding from where it was — unused for now, kept for sorting a list (finding a median) |
 | `motion.sequence(labels)` | items arriving one after another, where the order is the point |
 | `motion.one(label)` | a single thing, for the one that just changed |
 
 Where they are used: the reader picks the block width on any table question and
 watches the digits regroup, rather than being told which width the question
-wants; a stratified sample gathers from reading order into its groups; a sample
+wants; a stratified sample arrives in the order it was read, each member coloured by its stratum; a sample
 arrives in the order it was selected; and in the drill, exactly two blocks are
 animated per click — the one just decided, and the one to decide next.
 

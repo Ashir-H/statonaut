@@ -188,8 +188,7 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                     "The selection",
                     scoring.Award(marks=max(0, q["marks"] - errors),
                                   available=q["marks"], errors=errors),
-                    "; ".join(f"{name}: " + " ".join(engine.pad_all(vs, result.width))
-                              for name, vs in result.picks.items())))
+                    " ".join(engine.pad_all(result.sample, result.width))))
 
         elif q["kind"] == "interval":
             c1, c2 = st.columns(2)
@@ -264,7 +263,7 @@ def attempt(q: Dict, prefix: str, source: str = "", note: str = "") -> None:
                 population = sum(s.size for s in q["strata"])
                 st.markdown("**The group sizes**  \n" + "  \n".join(
                     sh.working(population, q["n"]) for sh in result.shares))
-                table.gathering(result, q["strata"])
+                table.coloured_sample(result, q["strata"])
 
     with st.expander("What the mark scheme rewards"):
         if q["kind"] in content.METHOD_KINDS:
@@ -675,9 +674,10 @@ def _rule_on_each_number(q: Dict, result, width: int, state: Dict) -> None:
         else:
             st.success("You have read as much of the table as the question needs.")
         st.markdown("**The sample**")
-        table.sample_chips(result.sample, result.width)
         if q["kind"] == "stratified":
-            table.gathering(result, q["strata"])
+            table.coloured_sample(result, q["strata"])
+        else:
+            table.sample_chips(result.sample, result.width)
         if q["kind"] == "systematic":
             st.markdown(f"Start `{engine.pad(result.start, result.width)}`, "
                         f"interval **{result.interval}**, so the sample is "

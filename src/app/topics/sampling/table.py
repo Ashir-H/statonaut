@@ -71,73 +71,27 @@ def sample_chips(values: Sequence[int], width: int, *, animate: bool = True) -> 
                 unsafe_allow_html=True)
 
 
-def gathering(result, strata) -> None:
-    """The selected numbers moving from reading order into their groups.
+def coloured_sample(result, strata) -> None:
+    """The sample in the order the numbers came off the table.
 
-    One pass along the table gives them in the order they were met; the method
-    then wants them grouped. Same values, rearranged - and the rearrangement
-    is the part worth seeing.
+    Not regrouped: the mark schemes list a stratified sample in the order it
+    was read, so that is the order shown. Which stratum each member belongs to
+    is carried by its colour, which says the same thing without rearranging
+    the answer a student has to write down.
     """
     tint = {}
     for position, stratum in enumerate(strata):
         for value in result.picks[stratum.name]:
             tint[value] = motion.GROUPS[position % len(motion.GROUPS)]
-    order = [result.sample.index(value) for stratum in strata
-             for value in result.picks[stratum.name]]
     labels = engine.pad_all(result.sample, result.width)
-    st.caption("Read along the table in this order, then gathered into groups:")
+    st.caption("The sample, in the order the numbers came off the table. The "
+               "colours show which stratum each one belongs to.")
     st.markdown(
-        motion.reorder(labels, order,
-                       item_classes=[tint[v] for v in result.sample], step=0.03),
+        motion.sequence(labels, item_classes=[tint[v] for v in result.sample],
+                        wrapper_class="chips"),
         unsafe_allow_html=True)
     ui.legend([(s.name, motion.GROUP_COLOURS[i % len(motion.GROUP_COLOURS)])
                for i, s in enumerate(strata)])
-
-
-WIDTHS = (1, 2, 3, 4)
-
-
-def _width_label(width: int) -> str:
-    return "1 digit" if width == 1 else f"{width} digits"
-
-
-@st.fragment
-def regrouper(row: str, key: str, *, labelled: str = "") -> None:
-    """Let the reader regroup the table themselves, and watch it happen.
-
-    The table is printed in pairs. Choosing a different block width slides the
-    digits into their new groups and lists the numbers that come out - without
-    saying whether that width is the right one for this question. Deciding
-    that is the thing being learnt.
-
-    A fragment, so changing the width redraws this and nothing else: no
-    content files re-read, no answer box rebuilt, no page scrolled.
-    """
-    digits = engine.digits(row)
-    remembered = st.session_state.setdefault("regroup", {})
-    was = remembered.get(key, 2)
-
-    chosen = st.segmented_control(
-        "Read the table in blocks of", list(WIDTHS), default=was,
-        format_func=_width_label, key=f"regroup:{key}",
-        help="The table is printed in pairs. That is how it is printed, not "
-             "necessarily how this question needs it read.")
-    if chosen is None:
-        chosen = was
-    remembered[key] = chosen
-    moved = chosen != was
-
-    st.markdown(motion.regroup(digits, was, chosen), unsafe_allow_html=True)
-    blocks = engine.read_blocks(row, chosen)
-    tail = len(digits) - len(blocks) * chosen
-    note = f"Reading in blocks of {chosen} gives {len(blocks)} numbers"
-    if tail:
-        note += f", with {tail} digit{'s' if tail > 1 else ''} left over"
-    st.caption(note + (f". {labelled}" if labelled else "."))
-    st.markdown(
-        motion.sequence(blocks, animation=motion.RISE if moved else None,
-                        wrapper_class="chips"),
-        unsafe_allow_html=True)
 
 
 def walkthrough(result, row: str, read_width: int) -> None:

@@ -103,10 +103,10 @@ CSS = """
                 border-radius: .4rem; color: inherit; font-weight: 600;
                 border: 1px solid rgba(128,128,128,.35);
                 background: rgba(128,128,128,.14);}
-.s101-row .s101-grp0 {background: rgba(59,130,246,.24); border-color: rgba(59,130,246,.55);}
-.s101-row .s101-grp1 {background: rgba(168,85,247,.24); border-color: rgba(168,85,247,.55);}
-.s101-row .s101-grp2 {background: rgba(20,184,166,.26); border-color: rgba(20,184,166,.55);}
-.s101-row .s101-grp3 {background: rgba(234,179,8,.26); border-color: rgba(234,179,8,.55);}
+.s101-row .s101-grp0, .chips .s101-grp0 {background: rgba(59,130,246,.24); border-color: rgba(59,130,246,.55);}
+.s101-row .s101-grp1, .chips .s101-grp1 {background: rgba(168,85,247,.24); border-color: rgba(168,85,247,.55);}
+.s101-row .s101-grp2, .chips .s101-grp2 {background: rgba(20,184,166,.26); border-color: rgba(20,184,166,.55);}
+.s101-row .s101-grp3, .chips .s101-grp3 {background: rgba(234,179,8,.26); border-color: rgba(234,179,8,.55);}
 
 /* A row whose items are all the same width, so a slide of one place is
    exactly one item plus one gap - no measuring, no JavaScript. */
@@ -141,14 +141,15 @@ def _delay(index: int, step: float) -> str:
 
 
 def sequence(labels: Sequence[str], *, animation: str = RISE, step: float = STEP,
-             item_class: str = "", wrapper_class: str = "") -> str:
+             item_class: str = "", item_classes: Optional[Sequence[str]] = None,
+             wrapper_class: str = "") -> str:
     """Items appearing one after another, in the order given.
 
     Used where the order is itself the point: the members of a sample arrive in
     the order they were selected.
     """
     parts = [
-        f"<span class='{classes(animation, item_class)}' "
+        f"<span class='{classes(animation, item_classes[i] if item_classes else item_class)}' "
         f"style='{_delay(i, step)}'>{label}</span>"
         for i, label in enumerate(labels)
     ]
