@@ -21,7 +21,7 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 from app import registry  # noqa: E402
 from app.topics.central_tendency import content, engine, generate  # noqa: E402
 from app.topics.central_tendency.engine import Row  # noqa: E402
-from app.topics.central_tendency.pages import notes, table_walk  # noqa: E402
+from app.topics.central_tendency.pages import notes, table_walk  # noqa: E402,F401
 
 problems = []
 
@@ -178,8 +178,8 @@ def complain(where, at):
 topic = next(t for t in registry.topics() if t.key == "central-tendency")
 if topic.unit != "Unit 5":
     problems.append(f"the topic is registered as {topic.unit}, not Unit 5")
-if [p.key for p in topic.pages] != ["notes", "walkthrough"]:
-    problems.append(f"expected the notes and walkthrough pages, "
+if [p.key for p in topic.pages] != ["notes", "walkthrough", "practice"]:
+    problems.append(f"expected notes, walkthrough and practice, "
                     f"not {[p.key for p in topic.pages]}")
 
 at = open_page("notes")
@@ -280,6 +280,65 @@ if last_run > kinds.index("position") or kinds.index("position") > kinds.index("
     problems.append("the median is reached before the running total and the position")
 print("walkthrough: the column before its total, the total before the mean, the "
       "running total before the median")
+
+# ---- 7. the marked question ------------------------------------------------
+
+for kind in ("list", "table"):
+    at = open_page("practice")
+    at.selectbox(key="ct-practice:choice").set_value(kind).run()
+    complain(f"practice {kind} load", at)
+    seed = at.session_state["ct-practice"]["seed"]
+    answers = generate.solve(generate.build(kind, seed))
+    prefix = f"ct-practice:{kind}:{seed}"
+    from_table = kind == "table"
+    total = answers.sigma_fx if from_table else answers.total
+
+    for key, value in [("mode", answers.mode), ("position", answers.position),
+                       ("median", answers.median), ("total", total),
+                       ("mean", answers.mean)]:
+        at.text_input(key=f"{prefix}:{key}").set_value(engine.shown(value)).run()
+    at.button(key=f"{prefix}:mark").click().run()
+    complain(f"practice {kind} mark", at)
+    banner = " ".join(m.value for m in at.success)
+    if "5 out of 5" not in banner:
+        problems.append(f"practice {kind}: a correct answer scored {banner!r}")
+    else:
+        print(f"practice: {kind:5} a correct answer with its working scored 5/5")
+
+    at = open_page("practice")
+    at.selectbox(key="ct-practice:choice").set_value(kind).run()
+    seed = at.session_state["ct-practice"]["seed"]
+    prefix = f"ct-practice:{kind}:{seed}"
+    for key in ("mode", "position", "median", "total", "mean"):
+        at.text_input(key=f"{prefix}:{key}").set_value("0").run()
+    at.button(key=f"{prefix}:mark").click().run()
+    complain(f"practice {kind} wrong", at)
+    if not at.error:
+        problems.append(f"practice {kind}: an answer of all zeros was not marked wrong")
+
+# a part-filled answer is sent back rather than marked, so the score is not
+# nudged by a half-finished attempt
+at = open_page("practice")
+seed = at.session_state["ct-practice"]["seed"]
+kind = at.session_state["ct-practice"]["choice"]
+prefix = f"ct-practice:{kind}:{seed}"
+at.text_input(key=f"{prefix}:mode").set_value("1").run()
+at.button(key=f"{prefix}:mark").click().run()
+complain("practice part-filled", at)
+if not at.warning:
+    problems.append("a part-filled answer was marked instead of being sent back")
+
+# the working is asked for separately, because that is what the marks are for
+labels = [box.label for box in at.text_input]
+if not any("position" in label.lower() for label in labels):
+    problems.append("the question never asks for the median position, which is a "
+                    "mark of its own")
+# Compared without lowering: lower() turns the capital sigma into a small one.
+if not any(label in ("\u03a3x", "\u03a3fx") for label in labels):
+    problems.append(f"the question never asks for the total, which carries the "
+                    f"method mark for the mean: boxes are {labels}")
+print("practice: nothing for zeros, a part-filled answer is not marked, and the "
+      "working is asked for separately")
 
 print()
 if problems:

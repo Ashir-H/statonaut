@@ -44,9 +44,15 @@ def open_page(topic, page):
     return AppTest.from_string(script, default_timeout=90).run()
 
 
-def _find(page_key):
-    """The topic and page registered under this key."""
-    return next((t, p) for t, p in registry.pages() if p.key == page_key)
+def _find(page_key, topic_key="sampling"):
+    """The topic and page registered under this key.
+
+    The topic has to be named. Page keys repeat across topics - every topic has
+    a "drill" - so a bare search would quietly return whichever topic happens
+    to be registered first.
+    """
+    return next((t, p) for t, p in registry.pages()
+                if p.key == page_key and t.key == topic_key)
 
 
 # 1. the entry script builds its navigation and lands on the home page
