@@ -21,7 +21,7 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 from app import registry  # noqa: E402
 from app.topics.central_tendency import content, engine, generate  # noqa: E402
 from app.topics.central_tendency.engine import Row  # noqa: E402
-from app.topics.central_tendency.pages import notes  # noqa: E402
+from app.topics.central_tendency.pages import notes, table_walk  # noqa: E402
 
 problems = []
 
@@ -178,8 +178,8 @@ def complain(where, at):
 topic = next(t for t in registry.topics() if t.key == "central-tendency")
 if topic.unit != "Unit 5":
     problems.append(f"the topic is registered as {topic.unit}, not Unit 5")
-if [p.key for p in topic.pages] != ["notes"]:
-    problems.append(f"this commit should register the notes page only, "
+if [p.key for p in topic.pages] != ["notes", "walkthrough"]:
+    problems.append(f"expected the notes and walkthrough pages, "
                     f"not {[p.key for p in topic.pages]}")
 
 at = open_page("notes")
@@ -213,6 +213,73 @@ second = generate.build("list", 1204)["values"]
 if first != second:
     problems.append("the worked example changes between runs")
 print("notes: the worked example is fixed, so a lesson can refer to it")
+
+# ---- 6. the frequency table walkthrough ------------------------------------
+
+at = open_page("walkthrough")
+complain("walkthrough load", at)
+seed = at.session_state["ct-walk"]["seed"]
+question = generate.build("table", seed)
+answers = generate.solve(question)
+steps = table_walk.walk_steps(answers)
+signature = generate.signature(question)
+
+for index, step in enumerate(steps):
+    key = f"ct-walk:{signature}:{index}"
+    try:
+        at.text_input(key=key).set_value(engine.shown(step["want"])).run()
+    except KeyError:
+        problems.append(f"walkthrough step {index + 1} ({step['kind']}) never appeared")
+        break
+    at.button(key=f"ct-walk:check:{index}").click().run()
+    complain(f"walkthrough step {index + 1}", at)
+    reached = at.session_state["ct-walk:state"]["step"]
+    if reached != index + 1:
+        problems.append(f"walkthrough stuck at step {reached} after a correct answer "
+                        f"to step {index + 1} ({step['kind']})")
+        break
+else:
+    if not any("complete" in m.value for m in at.success):
+        problems.append("the walkthrough never reported the table complete")
+    filled = at.session_state["ct-walk:state"]
+    if filled["fx"] != list(answers.products):
+        problems.append(f"the f x column ended as {filled['fx']}, "
+                        f"not {list(answers.products)}")
+    if filled["run"] != list(answers.running):
+        problems.append(f"the running total ended as {filled['run']}, "
+                        f"not {list(answers.running)}")
+print(f"walkthrough: all {len(steps)} steps of a {len(answers.rows)}-row table "
+      f"accepted in order, both columns correct")
+
+# a wrong value must hold the student on the same cell
+at = open_page("walkthrough")
+seed = at.session_state["ct-walk"]["seed"]
+answers = generate.solve(generate.build("table", seed))
+signature = f"table:{seed}"
+wrong = engine.shown(table_walk.walk_steps(answers)[0]["want"] + 1)
+at.text_input(key=f"ct-walk:{signature}:0").set_value(wrong).run()
+at.button(key="ct-walk:check:0").click().run()
+complain("walkthrough wrong answer", at)
+if at.session_state["ct-walk:state"]["step"] != 0:
+    problems.append("a wrong f x value still advanced the walkthrough")
+if not at.error:
+    problems.append("a wrong f x value drew no correction")
+print("walkthrough: a wrong value holds the student on the same cell, with a reason")
+
+# the steps come in the order the marks are paid in
+kinds = [step["kind"] for step in steps]
+last_fx = max(i for i, kind in enumerate(kinds) if kind == "fx")
+if last_fx > kinds.index("sigma_fx"):
+    problems.append("the f x column is added up before it is finished")
+if kinds.index("sigma_fx") > kinds.index("mean"):
+    problems.append("the mean is asked for before the total it is built from")
+if kinds.index("sigma_f") > kinds.index("mean"):
+    problems.append("the mean is asked for before the frequencies are totalled")
+last_run = max(i for i, kind in enumerate(kinds) if kind == "run")
+if last_run > kinds.index("position") or kinds.index("position") > kinds.index("median"):
+    problems.append("the median is reached before the running total and the position")
+print("walkthrough: the column before its total, the total before the mean, the "
+      "running total before the median")
 
 print()
 if problems:

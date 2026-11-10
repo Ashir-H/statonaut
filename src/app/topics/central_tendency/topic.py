@@ -8,7 +8,7 @@ the end. Nothing here follows another unit's shape for the sake of it.
 
 from app.registry import Page, Topic
 
-from .pages import notes
+from .pages import notes, table_walk
 
 TOPIC = Topic(
     key="central-tendency",
@@ -24,5 +24,8 @@ TOPIC = Topic(
              ":material/menu_book:",
              "one measure at a time: what it means, how it is computed, "
              "when it is used"),
+        Page("walkthrough", "Walk a frequency table",
+             table_walk.page_walkthrough, ":material/table_rows:",
+             "the f x column and the running total, one cell at a time"),
     ),
 )
