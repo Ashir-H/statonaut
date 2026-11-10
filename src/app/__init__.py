@@ -1,4 +1,4 @@
-"""Statistics 101 - practice app for Cambridge IGCSE Statistics 0479."""
+"""Statonaut - practice app for Cambridge IGCSE Statistics 0479."""
 
 __all__ = ["registry", "home", "core", "topics", "main"]
 

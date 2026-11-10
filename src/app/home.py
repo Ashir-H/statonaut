@@ -8,7 +8,7 @@ from .core import ui
 
 def render() -> None:
     ui.inject()
-    st.title("Statistics 101")
+    st.title("Statonaut")
     st.caption("Practice for Cambridge IGCSE Statistics 0479")
 
     st.markdown(

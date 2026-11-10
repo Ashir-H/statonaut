@@ -1,3 +1,18 @@
 [server]
 port = 8501
 headless = true
+
+[theme]
+primaryColor = "#7F77DD"
+
+[theme.light]
+primaryColor = "#6A5FD0"
+secondaryBackgroundColor = "#F5F3FC"
+linkColor = "#5B4FC4"
+borderColor = "#E2DDF4"
+
+[theme.dark]
+primaryColor = "#544ab3"
+secondaryBackgroundColor = "#241F38"
+linkColor = "#B3ACF2"
+borderColor = "#3A3356"

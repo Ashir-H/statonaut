@@ -1,4 +1,4 @@
-# Statistics 101
+# Statonaut
 
 A practice app for **Cambridge IGCSE Statistics 0479**. Each topic teaches the
 method, drills it step by step, then sets whole questions and marks them the way

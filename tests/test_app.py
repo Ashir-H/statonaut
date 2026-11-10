@@ -53,7 +53,7 @@ def _find(page_key):
 at = AppTest.from_file(ENTRY, default_timeout=90).run()
 complain("entry script", at)
 titles = [t.value for t in at.title]
-if "Statistics 101" not in titles:
+if "Statonaut" not in titles:
     problems.append(f"home page title missing, saw {titles}")
 print(f"entry script: home page is '{titles[0] if titles else None}', "
       f"{len(registry.topics())} topic(s) registered")

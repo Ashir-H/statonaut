@@ -1,4 +1,4 @@
-"""Statistics 101 - practice for Cambridge IGCSE Statistics 0479.
+"""Statonaut - practice for Cambridge IGCSE Statistics 0479.
 
 Run it with:  uv run streamlit run streamlit_app.py
 
@@ -21,7 +21,7 @@ from app import home, registry  # noqa: E402
 from app.core import scoring  # noqa: E402
 
 st.set_page_config(
-    page_title="Statistics 101",
+    page_title="Statonaut",
     page_icon=":material/bar_chart:",
     layout="centered",
     # "auto" rather than "expanded": on a phone an expanded sidebar covers the
@@ -32,7 +32,7 @@ st.set_page_config(
 # One section per topic, each holding that topic's pages. Section headings are
 # what gives the sidebar its two levels: topic, then page.
 sections = {
-    "Statistics 101": [
+    "Statonaut": [
         st.Page(home.render, title="Home", icon=":material/home:",
                 url_path="home", default=True),
     ],

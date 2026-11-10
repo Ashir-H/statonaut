@@ -1,7 +1,7 @@
 [project]
 name = "app"
 version = "0.1.0"
-description = "Statistics 101 - practice app for Cambridge IGCSE Statistics 0479"
+description = "Statonaut - practice app for Cambridge IGCSE Statistics 0479"
 readme = "README.md"
 authors = [
     { name = "Ashir", email = "ashirhabib999@gmail.com" }
