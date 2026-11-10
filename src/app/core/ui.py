@@ -63,6 +63,19 @@ CSS = """
        padding: 1rem 1.1rem; margin-bottom: .9rem; color: inherit;}
 .card h4 {margin: 0 0 .2rem;}
 .card .meta {font-size: .85rem; opacity: .75; margin: 0 0 .5rem;}
+
+/* A wide table scrolls inside its own box rather than stretching the page.
+   Chrome shrinks these to fit; Safari on iOS keeps a table at its min-content
+   width and widens the whole document instead, so say it explicitly. Cells
+   also break long words, since a walkthrough row puts a long reason beside a
+   short code. */
+[data-testid="stMarkdown"] table {display: block; width: max-content;
+                                  max-width: 100%; overflow-x: auto;}
+[data-testid="stMarkdown"] th, [data-testid="stMarkdown"] td {
+    overflow-wrap: anywhere;}
+/* Nothing in the main column may hold a width below its own content and push
+   the page wider. */
+[data-testid="stMain"] [data-testid="stVerticalBlock"] {min-width: 0;}
 </style>
 """
 

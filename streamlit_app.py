@@ -24,7 +24,9 @@ st.set_page_config(
     page_title="Statistics 101",
     page_icon=":material/bar_chart:",
     layout="centered",
-    initial_sidebar_state="expanded",
+    # "auto" rather than "expanded": on a phone an expanded sidebar covers the
+    # page and swallows the first tap. It still opens on a wide screen.
+    initial_sidebar_state="auto",
 )
 
 # One section per topic, each holding that topic's pages. Section headings are
