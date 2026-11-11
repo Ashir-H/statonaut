@@ -23,6 +23,13 @@ KIND_NAMES = {
 
 EXAMPLE_CODE = 1204   # the worked examples, so a lesson can refer to them
 
+# The product column, written in one place. A multiplication sign between f and
+# x reads as two x's at body-text size, so the product is set as mathematics
+# with a centre dot instead.
+FX = maths.inline(r"f \cdot x")
+SIGMA_FX = maths.inline(r"\Sigma fx")
+SIGMA_F = maths.inline(r"\Sigma f")
+
 
 # ------------------------------------------------------------------- helpers
 
@@ -42,7 +49,20 @@ def judged(exact: float, given: Optional[float], available: int = 1) -> scoring.
 
 
 def mean_working(total: int, count: int, value: float) -> str:
-    return maths.inline(maths.quotient(total, count, engine.shown(value)))
+    """The division and its answer, with the sign the answer deserves."""
+    return maths.inline(maths.quotient(total, count, engine.shown(value),
+                                       approximate=not engine.is_exact(value)))
+
+
+def value_text(value: float) -> str:
+    """A value on its own, said to be approximate when it has been rounded."""
+    if engine.is_exact(value):
+        return engine.shown(value)
+    return maths.inline(r"\approx " + engine.shown(value))
+
+
+ROUNDING = ("Give any answer that does not come out exactly to three significant "
+            "figures or two decimal places.")
 
 
 def position_working(count: int, value: float) -> str:
@@ -56,7 +76,7 @@ def table_markdown(question: Dict,
     rows = generate.rows_of(question)
     head = [question["x_label"] + " (x)", question["f_label"] + " (f)"]
     if products is not None:
-        head.append("f × x")
+        head.append(FX)
     if cumulative is not None:
         head.append("Running total")
     lines = ["| " + " | ".join(head) + " |",

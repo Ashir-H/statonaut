@@ -26,7 +26,7 @@ TOPIC = Topic(
              "when it is used"),
         Page("walkthrough", "Walk a frequency table",
              table_walk.page_walkthrough, ":material/table_rows:",
-             "the f x column and the running total, one cell at a time"),
+             "the fx column and the running total, one cell at a time"),
         Page("practice", "Practice a question", practice.page_practice,
              ":material/edit:",
              "a whole question from a code, marked part by part"),

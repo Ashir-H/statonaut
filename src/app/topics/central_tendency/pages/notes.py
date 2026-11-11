@@ -11,14 +11,12 @@ reason to reach for the median is the same fact as the mean's weakness, so
 separating them would mean saying it twice and teaching it once.
 """
 
-import math
-
 import streamlit as st
 
 from app.core import ui
 from app.core.library import ContentError
 
-from .. import content, engine, generate
+from .. import content, engine, generate, ordering
 from ..shared import (EXAMPLE_CODE, TOPIC_LINE, mean_working, position_working,
                       table_markdown)
 
@@ -26,7 +24,6 @@ CHOICES = {
     "mode": "The mode",
     "median": "The median",
     "mean": "The mean",
-    "closing": "Also worth knowing",
 }
 
 
@@ -35,7 +32,7 @@ def page_notes() -> None:
     ui.page_header(TOPIC_LINE, "The three measures")
 
     try:
-        st.markdown(content.closing().section(content.WORDS))
+        st.markdown(content.vocabulary().section(content.WORDS))
     except ContentError as exc:
         st.warning(f"Content needs attention: {exc}")
 
@@ -43,10 +40,7 @@ def page_notes() -> None:
         "Read about", list(CHOICES), format_func=lambda key: CHOICES[key],
         default="mode", key="ct-notes:choice")
     st.divider()
-    if chosen == "closing":
-        _closing()
-    else:
-        _measure(chosen or "mode")
+    _measure(chosen or "mode")
 
 
 def _measure(key: str) -> None:
@@ -67,18 +61,6 @@ def _measure(key: str) -> None:
     st.markdown(doc.section(content.MARKED))
 
 
-def _closing() -> None:
-    try:
-        doc = content.closing()
-    except ContentError as exc:
-        st.warning(f"Content needs attention: {exc}")
-        return
-    st.markdown("### The range")
-    st.markdown(doc.section(content.RANGE))
-    st.markdown("### What comes later")
-    st.markdown(doc.section(content.LATER))
-
-
 def _example(key: str) -> None:
     """The same two questions every time, so a lesson can refer to them."""
     list_question = generate.build("list", EXAMPLE_CODE)
@@ -91,19 +73,16 @@ def _example(key: str) -> None:
     if key == "mode":
         ui.mono_blocks(
             [(str(v), "acc" if v == listed.mode else "pend") for v in listed.ordered],
-            "In order of size, with the mode picked out")
+            "In ascending order, with the mode picked out")
         st.markdown(
             f"{listed.mode} occurs {list(listed.ordered).count(listed.mode)} times, "
             f"more often than any other value, so the mode is {listed.mode}.")
     elif key == "median":
-        ui.mono_blocks([(str(v), "pend") for v in list_question["values"]],
-                       "As the question gives them")
-        low = math.floor(listed.position) - 1
-        high = math.ceil(listed.position) - 1
-        ui.mono_blocks(
-            [(str(v), "acc" if index in (low, high) else "pend")
-             for index, v in enumerate(listed.ordered)],
-            "In order of size, with the middle picked out by position")
+        st.markdown("Drag these into ascending order, smallest first, then check "
+                    "them. The ordering "
+                    "is worth a mark on its own, so it is worth being able to do "
+                    "it quickly.")
+        ordering.ordering_exercise(list_question["values"])
         middle = listed.middle_values
         ending = (f"so the median is {engine.shown(listed.median)}."
                   if len(middle) == 1 else

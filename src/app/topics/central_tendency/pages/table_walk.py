@@ -16,7 +16,8 @@ import streamlit as st
 from app.core import maths, ui
 
 from .. import engine, generate
-from ..shared import TOPIC_LINE, as_number, mean_working, table_markdown
+from ..shared import (FX, SIGMA_F, SIGMA_FX, TOPIC_LINE, as_number,
+                      mean_working, table_markdown, value_text)
 
 
 # ----------------------------------------------------------------- the drill
@@ -29,25 +30,25 @@ def walk_steps(answers) -> List[Dict]:
         steps.append({
             "kind": "fx", "row": index, "want": float(row.fx),
             "ask": f"Row {index + 1}: the value is {row.x} and its frequency is "
-                   f"{row.f}. What goes in the f × x column?",
+                   f"{row.f}. What goes in the {FX} column?",
             "why": "Multiply the value by its frequency. This row stands for "
                    f"{row.f} items each worth {row.x}.",
         })
     steps.append({
         "kind": "sigma_fx", "row": None, "want": float(answers.sigma_fx),
-        "ask": "Add the f × x column. What is Σfx?",
+        "ask": f"Add the {FX} column. What is {SIGMA_FX}?",
         "why": "Add the column you have just built, not the x column.",
     })
     steps.append({
         "kind": "sigma_f", "row": None, "want": float(answers.sigma_f),
-        "ask": "Add the frequency column. What is Σf?",
+        "ask": f"Add the frequency column. What is {SIGMA_F}?",
         "why": "This is how many values there are altogether, not how many rows "
                "the table has.",
     })
     steps.append({
         "kind": "mean", "row": None, "want": answers.mean,
-        "ask": "Now divide. What is the mean, to three significant figures if it "
-               "does not come out exactly?",
+        "ask": "Now divide. What is the mean? If it does not come out exactly, "
+               "give it to three significant figures or two decimal places.",
         "why": "Divide Σfx by Σf.",
     })
     for index, row in enumerate(answers.rows):
@@ -82,7 +83,7 @@ def fresh_state(signature: str, rows: int) -> Dict:
 def page_walkthrough() -> None:
     ui.inject()
     ui.page_header(TOPIC_LINE, "Walk a frequency table",
-                   "The f × x column, then the totals, then the running total "
+                   "The fx column, then the totals, then the running total "
                    "and the median.")
     _, seed = ui.code_controls("ct-walk", generate.new_seed)
     question = generate.build("table", seed)
@@ -120,8 +121,8 @@ def page_walkthrough() -> None:
         st.success("The table is complete.")
         st.markdown(
             f"- Mode {answers.mode}\n"
-            f"- Median {engine.shown(answers.median)}\n"
-            f"- Mean {engine.shown(answers.mean)}"
+            f"- Median {value_text(answers.median)}\n"
+            f"- Mean {value_text(answers.mean)}"
         )
         st.caption(f"{state['right']} right, {state['wrong']} wrong along the way.")
         if st.button("Start this table again"):

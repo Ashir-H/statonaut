@@ -19,9 +19,12 @@ sys.path.insert(0, str(ROOT / "src"))
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
 from app import registry  # noqa: E402
-from app.topics.central_tendency import content, engine, generate  # noqa: E402
+from app.topics.central_tendency import (content, engine,  # noqa: E402
+                                         generate, ordering)
 from app.topics.central_tendency.engine import Row  # noqa: E402
 from app.topics.central_tendency.pages import notes, table_walk  # noqa: E402,F401
+from app.topics.central_tendency.shared import (ROUNDING, mean_working,  # noqa: E402
+                                                value_text)
 
 problems = []
 
@@ -94,7 +97,29 @@ check("3sf accepted", engine.agrees(480 / 45, 10.7), True)
 check("4sf accepted", engine.agrees(480 / 45, 10.67), True)
 check("under-rounded refused", engine.agrees(480 / 45, 10.6), False)
 check("blank refused", engine.agrees(5, None), False)
-print("rounding: half upwards to three significant figures, and marked to 3sf")
+
+# Both roundings are asked for, so both are accepted. Which one is coarser
+# depends on the size of the number, so neither can be derived from the other.
+check("1.5 is exact", engine.is_exact(1.5), True)
+check("5/6 is not exact", engine.is_exact(5 / 6), False)
+check("two decimal places of 5/6", engine.to_places(5 / 6), 0.83)
+check("2 d.p. accepted", engine.agrees(5 / 6, 0.83), True)
+check("3 s.f. accepted", engine.agrees(5 / 6, 0.833), True)
+check("coarser than both refused", engine.agrees(5 / 6, 0.8), False)
+
+# A rounded answer is written with an approximately-equals sign.
+if "approx" not in mean_working(480, 45, 480 / 45):
+    problems.append("a rounded mean is written with an equals sign")
+if "approx" in mean_working(45, 30, 1.5):
+    problems.append("an exact mean is written with an approximately-equals sign")
+if "approx" not in value_text(480 / 45):
+    problems.append("a rounded value on its own is not marked as approximate")
+if "approx" in value_text(1.5):
+    problems.append("an exact value on its own is called approximate")
+if "two decimal places" not in ROUNDING:
+    problems.append("the rounding instruction does not offer two decimal places")
+print("rounding: three significant figures or two decimal places, both accepted, "
+      "and a rounded answer is written with an approximately-equals sign")
 
 # ---- 3. no generated question can tie --------------------------------------
 
@@ -144,19 +169,80 @@ for name in content.MEASURES:
             problems.append(f"{name}.md teaches '{banned}', which belongs to the "
                             f"grouped unit taught after this one")
 
-closing = content.closing()
-if closing.section(content.RANGE).count("$") % 2:
-    problems.append("closing.md has unbalanced dollars")
-later = closing.section(content.LATER).lower()
-if not any(ahead in later for ahead in AHEAD):
-    problems.append("closing.md does not warn that grouped data changes the method, "
-                    "which is the one thing that section exists to say")
-words = closing.section(content.WORDS).lower()
+vocab = content.vocabulary()
+if "\n".join(vocab.bodies.values()).count("$") % 2:
+    problems.append("vocabulary.md has unbalanced dollars")
+words = vocab.section(content.WORDS).lower()
 if "measure of central tendency" not in words and "measures of central" not in words:
-    problems.append("closing.md does not explain the phrase the syllabus uses")
+    problems.append("vocabulary.md does not explain the phrase the syllabus uses")
+
+# The product is set as mathematics with a centre dot. A multiplication sign
+# between f and x reads as two x's at body-text size.
+for name in content.MEASURES:
+    body = "\n".join(content.measure(name).bodies.values())
+    if "\u00d7" in body or "\\times" in body:
+        problems.append(f"{name}.md writes the product with a multiplication sign "
+                        f"instead of a centre dot")
+if "\\cdot" not in content.measure("mean").section(content.COMPUTED):
+    problems.append("mean.md does not set the product as mathematics")
+prompts = " ".join(step["ask"]
+                   for step in table_walk.walk_steps(
+                       generate.solve(generate.build("table", 1204))))
+if "\u00d7" in prompts:
+    problems.append("the walkthrough prompts still carry a multiplication sign")
+if "\\cdot" not in prompts:
+    problems.append("the walkthrough prompts do not set the product as mathematics")
+if "two decimal places" not in prompts:
+    problems.append("the walkthrough never says how to round the mean")
 print("content:", "no complaints" if not complaints else complaints)
 
-# ---- 5. the notes page -----------------------------------------------------
+# ---- 5. the ordering exercise ----------------------------------------------
+
+page = ordering.ordering_html([3, 9, 4], theme="dark")
+for value in (3, 9, 4):
+    if str(value) not in page:
+        problems.append(f"the ordering exercise does not contain the value {value}")
+if "[3, 9, 4]" not in page:
+    problems.append("the ordering exercise does not receive the values in the order "
+                    "the question gives them")
+# Touch has to work: the drag-and-drop API does nothing on a phone, and the
+# chips must not scroll the page while being dragged.
+for needed, why in [
+        ("pointerdown", "dragging is not built on pointer events, so it will not "
+                        "work on a touch screen"),
+        ("touch-action", "a chip will scroll the page instead of being dragged"),
+        ("prefers-reduced-motion", "the movement cannot be turned off"),
+        ("window.parent", "the colours are not read from the app, so dark mode "
+                          "will be wrong"),
+        ("ArrowLeft", "there is no keyboard route through the exercise")]:
+    if needed not in page:
+        problems.append(f"the ordering exercise is missing '{needed}': {why}")
+if "#edebe8" not in page:
+    problems.append("the ordering exercise has no light-text fallback for dark mode")
+for forbidden in ("<script src", "http://", "https://"):
+    if forbidden in page:
+        problems.append(f"the ordering exercise loads something external: {forbidden}")
+if ordering.ordering_html([3, 9, 4], theme=None) == page:
+    problems.append("the theme makes no difference to the exercise")
+# Beside a marked question the same dragging must reveal nothing: the median
+# and its position are two of that page's five marks.
+working = ordering.ordering_html([3, 9, 4], theme="dark", mode=ordering.WORKING)
+for leak in ("Check the order", "so the median", 'id="say"'):
+    if leak in working:
+        problems.append(f"the rough-work row contains {leak!r}, so a marked "
+                        f"question could answer itself")
+if "pointerdown" not in working or "ArrowLeft" not in working:
+    problems.append("the rough-work row cannot be dragged or keyed")
+if 'id="reset"' not in working:
+    problems.append("the rough-work row cannot be put back to the given order")
+if ordering.HEIGHTS[ordering.WORKING] >= ordering.HEIGHTS[ordering.LEARN]:
+    problems.append("the rough-work row is no shorter than the exercise, though it "
+                    "has no message to show")
+print("ordering: values embedded in the question's own order, dragging works by "
+      "pointer and by keyboard, nothing loaded from outside")
+print("ordering: the rough-work mode drags but cannot check, print or reveal")
+
+# ---- 6. the notes page -----------------------------------------------------
 
 
 def open_page(page_key):
@@ -188,24 +274,22 @@ opening = " ".join(m.value for m in at.markdown)
 if "central tendency" not in opening.lower():
     problems.append("the notes page does not open with the vocabulary note")
 
+if list(notes.CHOICES) != list(content.MEASURES):
+    problems.append(f"the notes page offers {list(notes.CHOICES)}, which is not the "
+                    f"three measures")
+
 for key, label in notes.CHOICES.items():
     at.segmented_control(key="ct-notes:choice").set_value(key).run()
     complain(f"notes '{label}'", at)
     body = " ".join(m.value for m in at.markdown)
-    if key == "closing":
-        wanted = ("The range", "What comes later")
-    else:
-        wanted = ("How it is computed", "When it is used", "How it is marked")
-    for heading in wanted:
+    for heading in ("How it is computed", "When it is used", "How it is marked"):
         if heading not in body:
             problems.append(f"notes '{label}': '{heading}' is missing")
-    if key in content.MEASURES:
-        if not at.expander:
-            problems.append(f"notes '{label}': the worked example is missing")
-        shown = " ".join(m.value for m in at.markdown)
-        if "so the " + key not in shown.lower():
-            problems.append(f"notes '{label}': the example never states the answer")
-    print(f"notes: '{label}' shows {'both closing notes' if key == 'closing' else 'all four parts with a worked example'}")
+    if not at.expander:
+        problems.append(f"notes '{label}': the worked example is missing")
+    if "so the " + key not in body.lower():
+        problems.append(f"notes '{label}': the example never states the answer")
+    print(f"notes: '{label}' shows all four parts with a worked example")
 
 # the example is the same every time, so a lesson can refer to it
 first = generate.build("list", 1204)["values"]
@@ -214,7 +298,7 @@ if first != second:
     problems.append("the worked example changes between runs")
 print("notes: the worked example is fixed, so a lesson can refer to it")
 
-# ---- 6. the frequency table walkthrough ------------------------------------
+# ---- 7. the frequency table walkthrough ------------------------------------
 
 at = open_page("walkthrough")
 complain("walkthrough load", at)
@@ -281,12 +365,20 @@ if last_run > kinds.index("position") or kinds.index("position") > kinds.index("
 print("walkthrough: the column before its total, the total before the mean, the "
       "running total before the median")
 
-# ---- 7. the marked question ------------------------------------------------
+# ---- 8. the marked question ------------------------------------------------
 
 for kind in ("list", "table"):
     at = open_page("practice")
     at.selectbox(key="ct-practice:choice").set_value(kind).run()
     complain(f"practice {kind} load", at)
+    if "two decimal places" not in " ".join(m.value for m in at.markdown):
+        problems.append(f"practice {kind}: the question does not say how to round")
+    captions = " ".join(c.value for c in at.caption).lower()
+    if kind == "list" and "drag" not in captions:
+        problems.append("a list question offers no row to drag into order")
+    if kind == "table" and "drag" in captions:
+        problems.append("a table question offers a row to drag, but it has no list "
+                        "to order: its median comes from the running total")
     seed = at.session_state["ct-practice"]["seed"]
     answers = generate.solve(generate.build(kind, seed))
     prefix = f"ct-practice:{kind}:{seed}"
@@ -308,13 +400,23 @@ for kind in ("list", "table"):
     at = open_page("practice")
     at.selectbox(key="ct-practice:choice").set_value(kind).run()
     seed = at.session_state["ct-practice"]["seed"]
+    answers = generate.solve(generate.build(kind, seed))
     prefix = f"ct-practice:{kind}:{seed}"
-    for key in ("mode", "position", "median", "total", "mean"):
-        at.text_input(key=f"{prefix}:{key}").set_value("0").run()
+    total = answers.sigma_fx if kind == "table" else answers.total
+    # One away from every right answer, rather than a column of zeros: a table
+    # whose values start at zero can make an all-zeros answer partly correct,
+    # and then the question has not been marked wrong at all.
+    for key, value in [("mode", answers.mode), ("position", answers.position),
+                       ("median", answers.median), ("total", total),
+                       ("mean", answers.mean)]:
+        at.text_input(key=f"{prefix}:{key}").set_value(engine.shown(value + 1)).run()
     at.button(key=f"{prefix}:mark").click().run()
     complain(f"practice {kind} wrong", at)
+    banner = " ".join(m.value for m in at.error)
     if not at.error:
-        problems.append(f"practice {kind}: an answer of all zeros was not marked wrong")
+        problems.append(f"practice {kind}: a wholly wrong answer was not marked wrong")
+    elif "0 out of 5" not in banner:
+        problems.append(f"practice {kind}: a wholly wrong answer scored {banner!r}")
 
 # a part-filled answer is sent back rather than marked, so the score is not
 # nudged by a half-finished attempt
@@ -337,8 +439,8 @@ if not any("position" in label.lower() for label in labels):
 if not any(label in ("\u03a3x", "\u03a3fx") for label in labels):
     problems.append(f"the question never asks for the total, which carries the "
                     f"method mark for the mean: boxes are {labels}")
-print("practice: nothing for zeros, a part-filled answer is not marked, and the "
-      "working is asked for separately")
+print("practice: nothing for a wholly wrong answer, a part-filled answer is not "
+      "marked at all, and the working is asked for separately")
 
 print()
 if problems:

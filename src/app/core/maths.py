@@ -32,9 +32,17 @@ def share(size, population, sample, result: Optional[int] = None) -> str:
     return expression if result is None else rf"{expression} = {result}"
 
 
-def quotient(top, bottom, result=None) -> str:
+def quotient(top, bottom, result=None, approximate: bool = False) -> str:
+    """A division, optionally with its answer.
+
+    `approximate` writes the answer after an approximately-equals sign, which is
+    what a rounded answer deserves: 480 over 45 is not 10.7, it is near it.
+    """
     expression = fraction(top, bottom)
-    return expression if result is None else rf"{expression} = {result}"
+    if result is None:
+        return expression
+    relation = r"\approx" if approximate else "="
+    return rf"{expression} {relation} {result}"
 
 
 def joined(expressions: Sequence[str], separator: str = ", ") -> str:

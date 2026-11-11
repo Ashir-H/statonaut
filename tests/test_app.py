@@ -351,7 +351,8 @@ if reduced and "transition: none" not in reduced.group(1):
 import ast as _ast  # noqa: E402
 
 for source in sorted((ROOT / "src").rglob("*.py")):
-    tree = _ast.parse(source.read_text(encoding="utf-8"))
+    body = source.read_text(encoding="utf-8")
+    tree = _ast.parse(body)
     for node in _ast.walk(tree):
         if isinstance(node, _ast.Call):
             called = node.func
@@ -360,11 +361,16 @@ for source in sorted((ROOT / "src").rglob("*.py")):
             if name == "sleep":
                 problems.append(f"{source.name} calls sleep(), which holds the "
                                 "server for every frame of an animation")
+    # st.markdown strips a script, so one written into a page's HTML is dead
+    # code that only looks as though it works. Inside st.iframe a script does
+    # run, so a module that frames its own page is allowed one.
+    framed = "st.iframe(" in body
     for text in (n.value for n in _ast.walk(tree)
                  if isinstance(n, _ast.Constant) and isinstance(n.value, str)):
-        if "<script" in text:
-            problems.append(f"{source.name} emits a <script> tag, which is "
-                            "stripped unless it runs inside an iframe")
+        if "<script" in text and not framed:
+            problems.append(f"{source.name} emits a <script> tag into markdown, "
+                            "where it is stripped; hand the page to st.iframe "
+                            "instead")
 frames_found = sorted(re.findall(r"@keyframes\s+([\w-]+)", core_motion.CSS))
 print(f"animation: {len(frames_found)} keyframes, all on transform/opacity only, "
       "reduced motion respected, no sleeps and no scripts")

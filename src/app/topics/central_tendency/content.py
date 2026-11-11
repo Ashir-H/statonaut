@@ -18,7 +18,7 @@ from app.core.library import ContentError, Document, Library
 LIBRARY = Library("central-tendency")
 
 MEASURES = ("mode", "median", "mean")
-CLOSING = "closing"
+VOCABULARY = "vocabulary"
 
 # A measure's file is split on these four headings. Change a heading in a file
 # and it must change here too; everything else in the file is free text.
@@ -30,10 +30,8 @@ MARKED = "how-it-is-marked"
 MEASURE_SECTIONS = (MEANS, COMPUTED, USED, MARKED)
 
 WORDS = "the-words-we-use"
-RANGE = "the-range"
-LATER = "what-comes-later"
 
-CLOSING_SECTIONS = (WORDS, RANGE, LATER)
+VOCABULARY_SECTIONS = (WORDS,)
 
 
 def text(name: str) -> str:
@@ -46,16 +44,16 @@ def measure(name: str) -> Document:
     return LIBRARY.document(name)
 
 
-def closing() -> Document:
-    """The vocabulary note, the range, and what comes later."""
-    return LIBRARY.document(CLOSING)
+def vocabulary() -> Document:
+    """The note on the phrase the syllabus uses."""
+    return LIBRARY.document(VOCABULARY)
 
 
 def check() -> List[str]:
     """Every complaint about the content files, for the tests and a quick look."""
     trouble: List[str] = []
     wanted = [(name, MEASURE_SECTIONS) for name in MEASURES]
-    wanted.append((CLOSING, CLOSING_SECTIONS))
+    wanted.append((VOCABULARY, VOCABULARY_SECTIONS))
     for name, sections in wanted:
         try:
             doc = LIBRARY.document(name)

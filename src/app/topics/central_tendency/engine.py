@@ -55,18 +55,42 @@ def shown(value: float, figures: int = 3) -> str:
     return f"{rounded(value, figures):g}"
 
 
-def agrees(exact: float, given: Optional[float], figures: int = 3) -> bool:
+def to_places(value: float, places: int = 2) -> float:
+    """Round to a number of decimal places, half upwards."""
+    step = Decimal(1).scaleb(-places)
+    return float(Decimal(str(value)).quantize(step, rounding=ROUND_HALF_UP))
+
+
+def is_exact(value: float, figures: int = 3) -> bool:
+    """Whether the value can be written out in full, or only approached.
+
+    Used to decide between an equals sign and an approximately-equals sign: a
+    mean of 1.5 is 1.5, but a mean of 1.925 shown to three significant figures
+    is only near 1.93.
+    """
+    return abs(float(shown(value, figures)) - value) < 1e-12
+
+
+def agrees(exact: float, given: Optional[float], figures: int = 3,
+           places: int = 2) -> bool:
     """Whether an answer earns the mark.
 
-    The exact value is right, and so is any value that agrees with it to the
-    required number of significant figures: 10.7 and 10.67 both earn the mark
-    for 480 divided by 45, and 10.6 does not.
+    Three ways to be right: the exact value; a value that agrees with it to
+    three significant figures, which also lets a more precise answer through;
+    or the value rounded to two decimal places. Both roundings are accepted
+    because both are asked for, and which one is coarser depends on the size of
+    the number - for 0.8333 three significant figures gives 0.833 and two
+    decimal places gives 0.83, while for 480 over 45 they give 10.7 and 10.67.
+
+    An answer rounded the wrong way, such as 10.6, earns nothing.
     """
     if given is None:
         return False
     if abs(given - exact) < 1e-9:
         return True
-    return abs(rounded(given, figures) - rounded(exact, figures)) < 1e-9
+    if abs(rounded(given, figures) - rounded(exact, figures)) < 1e-9:
+        return True
+    return abs(given - to_places(exact, places)) < 1e-9
 
 
 # --------------------------------------------------------------- a plain list

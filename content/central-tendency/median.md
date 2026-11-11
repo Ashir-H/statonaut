@@ -2,8 +2,8 @@
 
 ## What it means
 
-The median is the value in the middle, once the data has been put in order of
-size. Half the values lie at or below it and half lie at or above it.
+The median is the value in the middle, once the data has been put in ascending
+order, which means smallest first. Half the values lie at or below it and half lie at or above it.
 
 Because it depends only on position, one very large or very small value cannot
 drag the median about. That is its defining property and the reason it is worth
@@ -11,7 +11,7 @@ having at all alongside the mean.
 
 ## How it is computed
 
-**From a list**, put the values in order of size first — this is not optional
+**From a list**, put the values in ascending order first — this is not optional
 and it is worth a mark on its own. Then count to the $\frac{n+1}{2}$ th value,
 where $n$ is how many values there are.
 
@@ -19,7 +19,7 @@ When $n$ is odd this lands on a single value. When $n$ is even it lands halfway
 between two values, and the median is the mean of those two: for eight values it
 is the value halfway between the 4th and the 5th.
 
-**From a frequency table**, the values are already in order of size down the $x$
+**From a frequency table**, the values are already in ascending order down the $x$
 column, but the middle row is not the median. Build a running total of the
 frequencies instead. There are $n = \Sigma f$ values altogether, so the median is
 still the $\frac{n+1}{2}$ th of them; count down the running total until it first

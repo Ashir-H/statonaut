@@ -12,9 +12,9 @@ import streamlit as st
 
 from app.core import scoring, ui
 
-from .. import engine, generate
-from ..shared import (KIND_NAMES, TOPIC_LINE, as_number, judged, mean_working,
-                      position_working, show_data)
+from .. import engine, generate, ordering
+from ..shared import (KIND_NAMES, ROUNDING, TOPIC_LINE, as_number, judged,
+                      mean_working, position_working, show_data)
 
 
 # -------------------------------------------------------------- the question
@@ -31,13 +31,20 @@ def attempt(question: Dict, prefix: str) -> None:
 
     ui.scenario(question["setting"],
                 "Find the mode, the median and the mean. Show the working the "
-                "mark scheme asks for.")
+                "mark scheme asks for. " + ROUNDING)
     show_data(question)
 
     remembered = scoring.recall(prefix, signature)
     if remembered:
         scoring.show_outcome(remembered["parts"])
         return
+
+    # Rough work for a list, in place of rewriting the values on paper. It
+    # cannot check anything and it cannot name the median: the median and its
+    # position are two of the five marks on this page.
+    if question["kind"] == "list":
+        st.caption("Rough work: drag the values into ascending order.")
+        ordering.ordering_exercise(question["values"], mode=ordering.WORKING)
 
     left, right = st.columns(2)
     mode_in = left.text_input("Mode", key=f"{prefix}:mode")

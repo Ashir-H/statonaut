@@ -18,13 +18,13 @@ $$\text{mean} = \frac{\Sigma x}{n}$$
 
 **From a frequency table**, you cannot add the $x$ column, because each value
 stands for however many items its frequency says. Multiply each value by its
-frequency to build an $f \times x$ column, add that column to get $\Sigma fx$,
+frequency to build an $f \cdot x$ column, add that column to get $\Sigma fx$,
 add the frequency column to get $\Sigma f$, and divide:
 
 $$\text{mean} = \frac{\Sigma fx}{\Sigma f}$$
 
 The symbol $\Sigma$ is the Greek capital sigma and means "add up". So
-$\Sigma fx$ is an instruction: work out $f \times x$ for every row, then add the
+$\Sigma fx$ is an instruction: work out $f \cdot x$ for every row, then add the
 results.
 
 ## When it is used
@@ -42,14 +42,16 @@ mean past most of the data. The median of 10 is the better description here.
 
 The division has to be visible. For a list that means $\frac{\Sigma x}{n}$
 written with the right total and the right $n$; for a table it means the
-$f \times x$ values on the page. One mark is for that working and a second is
+$f \cdot x$ values on the page. One mark is for that working and a second is
 for the value, and two mark schemes state explicitly that an answer offered with
 no working is capped at one mark.
 
 Divide by $\Sigma f$, not by the number of rows. A table of five rows describing
 forty values is divided by forty.
 
-An answer that does not come out exactly is given to three significant figures.
+An answer that does not come out exactly is given either to three significant
+figures or to two decimal places, and it is written with an approximately-equals
+sign rather than an equals sign.
 
 A question that hands you the mean and asks for something else carries its
 method mark for forming the equation — writing the total as the mean times $n$ —
