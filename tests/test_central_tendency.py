@@ -264,8 +264,8 @@ def complain(where, at):
 topic = next(t for t in registry.topics() if t.key == "central-tendency")
 if topic.unit != "Unit 5":
     problems.append(f"the topic is registered as {topic.unit}, not Unit 5")
-expected_pages = ["notes", "walkthrough", "choosing", "change", "backwards",
-                  "practice"]
+expected_pages = ["notes", "walkthrough", "quick", "choosing", "change",
+                  "backwards", "practice"]
 if [p.key for p in topic.pages] != expected_pages:
     problems.append(f"expected {expected_pages}, "
                     f"not {[p.key for p in topic.pages]}")
@@ -695,6 +695,81 @@ if not at.warning:
                     "the relationship carries the method mark")
 print("backwards: both marks for the relationship and the answer together, and an "
       "answer offered without a relationship is not marked")
+
+# ---- 12. quick table questions ----------------------------------------------
+
+from app.topics.central_tendency.pages import quick  # noqa: E402
+
+sample = generate.solve(generate.build("table", 1204))
+for ask in quick.ASKS:
+    if not quick.prompt(ask):
+        problems.append(f"quick: '{ask}' is asked for without a prompt")
+    try:
+        value = quick.wanted(ask, sample)
+    except Exception as exc:                                  # noqa: BLE001
+        problems.append(f"quick: '{ask}' has no answer: {exc}")
+        continue
+    if value is None or not engine.shown(value):
+        problems.append(f"quick: '{ask}' has no printable answer")
+    if not quick.note(ask, sample):
+        problems.append(f"quick: nothing is said about where '{ask}' comes from")
+asked = {quick.ask_for(seed) for seed in range(1000, 1500)}
+if asked != set(quick.ASKS):
+    missing = sorted(set(quick.ASKS) - asked)
+    problems.append(f"quick: {missing} never asked in 500 codes")
+print(f"quick: all {len(quick.ASKS)} quantities asked, each with an answer and a "
+      f"line on where it comes from")
+
+at = open_page("quick")
+complain("quick load", at)
+seed = at.session_state["ct-quick"]["seed"]
+answers = generate.solve(generate.build("table", seed))
+ask = quick.ask_for(seed)
+at.text_input(key=f"ct-quick:{seed}").set_value(
+    engine.shown(quick.wanted(ask, answers))).run()
+at.button(key=f"ct-quick:check:{seed}").click().run()
+complain("quick check", at)
+counted = at.session_state["ct-quick"]
+if counted["right"] != 1 or counted["wrong"] != 0:
+    problems.append(f"quick: a correct answer counted as {counted['right']} right "
+                    f"and {counted['wrong']} wrong")
+if not at.success:
+    problems.append("quick: a correct answer drew no confirmation")
+at.button(key=f"ct-quick:next:{seed}").click().run()
+complain("quick next", at)
+if at.session_state["ct-quick"]["seed"] == seed:
+    problems.append("quick: the next question is the same table")
+if at.session_state["ct-quick"]["answered"] is not None:
+    problems.append("quick: the next question opens already answered")
+
+at = open_page("quick")
+seed = at.session_state["ct-quick"]["seed"]
+answers = generate.solve(generate.build("table", seed))
+ask = quick.ask_for(seed)
+at.text_input(key=f"ct-quick:{seed}").set_value(
+    engine.shown(quick.wanted(ask, answers) + 1)).run()
+at.button(key=f"ct-quick:check:{seed}").click().run()
+complain("quick wrong", at)
+counted = at.session_state["ct-quick"]
+if counted["wrong"] != 1 or counted["right"] != 0:
+    problems.append(f"quick: a wrong answer counted as {counted['right']} right and "
+                    f"{counted['wrong']} wrong")
+if not at.error:
+    problems.append("quick: a wrong answer was not corrected")
+
+# This page must not feed the figure in the sidebar, which records marked
+# questions rather than drills.
+at = open_page("quick")
+seed = at.session_state["ct-quick"]["seed"]
+answers = generate.solve(generate.build("table", seed))
+at.text_input(key=f"ct-quick:{seed}").set_value(
+    engine.shown(quick.wanted(quick.ask_for(seed), answers))).run()
+at.button(key=f"ct-quick:check:{seed}").click().run()
+if at.session_state.get("tally", {}).get("questions"):
+    problems.append("quick: a drill answer was added to the sidebar figure, which "
+                    "records marked questions")
+print("quick: right and wrong counted on the page, a new table each time, and the "
+      "sidebar figure left alone")
 
 print()
 if problems:
