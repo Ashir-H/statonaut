@@ -19,6 +19,7 @@ LIBRARY = Library("central-tendency")
 
 MEASURES = ("mode", "median", "mean")
 VOCABULARY = "vocabulary"
+CHOOSING = "choosing"
 
 # A measure's file is split on these four headings. Change a heading in a file
 # and it must change here too; everything else in the file is free text.
@@ -32,6 +33,14 @@ MEASURE_SECTIONS = (MEANS, COMPUTED, USED, MARKED)
 WORDS = "the-words-we-use"
 
 VOCABULARY_SECTIONS = (WORDS,)
+
+# choosing.md is split on these four.
+REQUIRES = "what-the-question-requires"
+CREDITABLE = "what-makes-a-reason-creditable"
+PREFERRED = "when-each-measure-is-preferred"
+LOST = "where-marks-are-lost"
+
+CHOOSING_SECTIONS = (REQUIRES, CREDITABLE, PREFERRED, LOST)
 
 
 def text(name: str) -> str:
@@ -49,11 +58,22 @@ def vocabulary() -> Document:
     return LIBRARY.document(VOCABULARY)
 
 
+def choosing() -> Document:
+    """The prose on selecting a measure and justifying the selection."""
+    return LIBRARY.document(CHOOSING)
+
+
+def choosing_data() -> dict:
+    """The situations, read from choosing.toml."""
+    return LIBRARY.data(CHOOSING)
+
+
 def check() -> List[str]:
     """Every complaint about the content files, for the tests and a quick look."""
     trouble: List[str] = []
     wanted = [(name, MEASURE_SECTIONS) for name in MEASURES]
     wanted.append((VOCABULARY, VOCABULARY_SECTIONS))
+    wanted.append((CHOOSING, CHOOSING_SECTIONS))
     for name, sections in wanted:
         try:
             doc = LIBRARY.document(name)

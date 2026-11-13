@@ -1,0 +1,145 @@
+# Situations for the choosing-a-measure page.
+#
+# Each situation names the measure that best describes its data and the one
+# reason that would be credited for it, together with three statements that
+# would not. The distractors are deliberately plausible: each is either true of
+# the measure but silent about the data, or it confuses one measure with
+# another.
+#
+# Wording may be changed freely. Two things must hold, and the tests check
+# them: a numerical situation answered "median" must contain a value far from
+# the rest, and one answered "mean" must not; and where frequencies are given,
+# one category must occur more often than any other.
+
+[[situation]]
+key = "salaries"
+setting = "The annual salaries, in thousands of dollars, of the six employees of a small company were recorded."
+label = "Salary, in thousands of dollars"
+values = [18, 19, 20, 21, 22, 120]
+answer = "median"
+reason = "One salary lies far above the others and raises the mean above all but one of the six values, whereas the median depends only on position."
+distractors = [
+  "The mean takes every salary into account and is therefore the more accurate measure.",
+  "The median is quicker to obtain than the mean.",
+  "No salary occurs more than once, so the mode is the measure to use.",
+]
+
+[[situation]]
+key = "puzzle"
+setting = "Nine students were timed, in seconds, while completing a puzzle."
+label = "Time, in seconds"
+values = [8, 9, 9, 9, 10, 11, 12, 15, 25]
+answer = "median"
+reason = "One time of 25 seconds is far longer than the rest and raises the mean to 12 seconds, which is longer than seven of the nine times recorded."
+distractors = [
+  "The mode of 9 seconds occurs three times and is therefore the most reliable measure.",
+  "The mean is preferred because the data is numerical.",
+  "The median is preferred because there is an odd number of values.",
+]
+
+[[situation]]
+key = "rainfall"
+setting = "The daily rainfall, in millimetres, was recorded at a weather station on eight consecutive days."
+label = "Rainfall, in millimetres"
+values = [0, 1, 1, 1, 2, 3, 4, 52]
+answer = "median"
+reason = "A single reading of 52 millimetres raises the mean to 8 millimetres, a figure exceeded on only one of the eight days."
+distractors = [
+  "The mode is 1 millimetre, and the mode is always the appropriate measure for a small set of data.",
+  "The mean is preferred because it uses all eight readings.",
+  "The median is preferred because the readings were taken in order.",
+]
+
+[[situation]]
+key = "homework"
+setting = "Seven students recorded the number of minutes they spent on one homework task."
+label = "Time, in minutes"
+values = [20, 25, 25, 30, 35, 40, 180]
+answer = "median"
+reason = "One student worked for 180 minutes, which raises the mean to 50.7 minutes, longer than six of the seven times recorded."
+distractors = [
+  "The mean is preferred because every student's time contributes to it.",
+  "The mode of 25 minutes is the time recorded most often and is therefore typical.",
+  "The median is preferred because seven is an odd number.",
+]
+
+[[situation]]
+key = "apples"
+setting = "The masses, in grams, of six apples from one tree were measured."
+label = "Mass, in grams"
+values = [102, 104, 105, 105, 106, 108]
+answer = "mean"
+reason = "The masses are closely grouped, with no value far from the rest, so the mean uses all six measurements without being distorted by any one of them."
+distractors = [
+  "The median should be used because the masses are already in order of size.",
+  "The mode of 105 grams occurs twice and is therefore the most common mass.",
+  "The mean should be avoided whenever two values are equal.",
+]
+
+[[situation]]
+key = "marks"
+setting = "Seven candidates sat a short test marked out of twenty."
+label = "Mark out of 20"
+values = [11, 12, 13, 13, 14, 15, 16]
+answer = "mean"
+reason = "No mark lies far from the others, so the mean takes every candidate's mark into account and remains close to the centre of the data."
+distractors = [
+  "The median of 13 is a mark that a candidate actually obtained, so it is the better measure.",
+  "The mode should be used because 13 occurs twice.",
+  "The mean is preferred because it is the measure used in everyday speech.",
+]
+
+[[situation]]
+key = "heights"
+setting = "The heights, in centimetres, of seven members of a swimming club were measured."
+label = "Height, in centimetres"
+values = [150, 152, 153, 153, 155, 157, 158]
+answer = "mean"
+reason = "The heights lie within a narrow range, with no member far taller or shorter than the rest, so the mean describes the group without being pulled away from it."
+distractors = [
+  "The median is preferred because half the members are taller than it.",
+  "The mode of 153 centimetres occurs twice, so it is the height to quote.",
+  "The mean is preferred because heights are always measured to the nearest centimetre.",
+]
+
+[[situation]]
+key = "colours"
+setting = "Forty students were each asked to name their favourite colour."
+label = "Colour"
+categories = ["Red", "Blue", "Green", "Yellow"]
+frequencies = [7, 15, 11, 7]
+answer = "mode"
+reason = "The data is not numerical, so neither a total nor a middle position has any meaning; the mode identifies the colour named by the greatest number of students."
+distractors = [
+  "The median is the middle colour when the colours are listed alphabetically.",
+  "The mean is found by dividing the number of students by the number of colours.",
+  "Blue has the largest frequency, so blue is the median.",
+]
+
+[[situation]]
+key = "travel"
+setting = "The students in one class were asked how they usually travel to school."
+label = "Method of travel"
+categories = ["Walk", "Bus", "Car", "Cycle"]
+frequencies = [18, 9, 6, 3]
+answer = "mode"
+reason = "Methods of travel cannot be ordered or added, so only the mode can be stated; it names the method used by the greatest number of students."
+distractors = [
+  "The median is the second method in the table, since there are four methods.",
+  "The mean number of students per method is nine, so the mean describes the class.",
+  "The mode is preferred because walking is the healthiest method.",
+]
+
+[[situation]]
+key = "sport"
+setting = "Forty-eight members of a sports centre were each asked which sport they prefer."
+label = "Sport"
+categories = ["Football", "Cricket", "Hockey", "Netball"]
+frequencies = [14, 21, 8, 5]
+answer = "mode"
+reason = "Sports cannot be placed in order of size, so neither the median nor the mean exists; the mode names the sport preferred by most members."
+distractors = [
+  "The mean is forty-eight divided by four, which is twelve members for each sport.",
+  "The median is the sport with the middle frequency.",
+  "The mode is preferred because cricket has the longest name.",
+]

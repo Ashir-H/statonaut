@@ -14,7 +14,7 @@ from app.core import maths, scoring, ui
 
 from . import engine, generate
 
-TOPIC_LINE = "Unit 5 \u00b7 Measures of central tendency \u00b7 syllabus 4.1"
+TOPIC_LINE = "Unit 5 · Measures of central tendency · syllabus 4.1 and 4.4"
 
 KIND_NAMES = {
     "list": "From a list of values",

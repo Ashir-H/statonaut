@@ -131,6 +131,31 @@ def mode_of(values: Sequence[int]) -> Optional[int]:
     return winners[0]
 
 
+def extreme_values(values: Sequence[int], share: float = 0.1) -> List[int]:
+    """The values whose removal would move the mean by more than `share` of it.
+
+    A working definition rather than a syllabus rule, used only to check this
+    topic's own content: a situation that offers the median as the better
+    measure should contain the value that makes it so, and one that offers the
+    mean should contain no such value. A tenth of the mean separates the two
+    cleanly for every situation in the bank, from a single salary six times the
+    rest down to one puzzle time twice the median.
+    """
+    data = list(values)
+    if len(data) < 3:
+        return []
+    whole = sum(data) / len(data)
+    if whole == 0:
+        return []
+    far: List[int] = []
+    for index, value in enumerate(data):
+        rest = data[:index] + data[index + 1:]
+        without = sum(rest) / len(rest)
+        if abs(without - whole) / abs(whole) > share:
+            far.append(value)
+    return far
+
+
 @dataclass(frozen=True)
 class ListAnswers:
     """Everything a question about a plain list can ask for."""

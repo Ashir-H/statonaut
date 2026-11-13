@@ -19,8 +19,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
 from app import registry  # noqa: E402
-from app.topics.central_tendency import (content, engine,  # noqa: E402
-                                         generate, ordering)
+from app.topics.central_tendency import (choosing, content,  # noqa: E402
+                                         engine, generate, ordering)
 from app.topics.central_tendency.engine import Row  # noqa: E402
 from app.topics.central_tendency.pages import notes, table_walk  # noqa: E402,F401
 from app.topics.central_tendency.shared import (ROUNDING, mean_working,  # noqa: E402
@@ -264,8 +264,8 @@ def complain(where, at):
 topic = next(t for t in registry.topics() if t.key == "central-tendency")
 if topic.unit != "Unit 5":
     problems.append(f"the topic is registered as {topic.unit}, not Unit 5")
-if [p.key for p in topic.pages] != ["notes", "walkthrough", "practice"]:
-    problems.append(f"expected notes, walkthrough and practice, "
+if [p.key for p in topic.pages] != ["notes", "walkthrough", "choosing", "practice"]:
+    problems.append(f"expected notes, walkthrough, choosing and practice, "
                     f"not {[p.key for p in topic.pages]}")
 
 at = open_page("notes")
@@ -441,6 +441,71 @@ if not any(label in ("\u03a3x", "\u03a3fx") for label in labels):
                     f"method mark for the mean: boxes are {labels}")
 print("practice: nothing for a wholly wrong answer, a part-filled answer is not "
       "marked at all, and the working is asked for separately")
+
+# ---- 9. choosing a measure --------------------------------------------------
+
+problems += choosing.complaints()
+bank = choosing.situations()
+if len(bank) < 6:
+    problems.append(f"only {len(bank)} situation(s) in the bank, so a code comes "
+                    f"round again too soon")
+spread = {measure: sum(1 for item in bank if item.answer == measure)
+          for measure in choosing.MEASURES}
+for measure, count in spread.items():
+    if count < 2:
+        problems.append(f"only {count} situation(s) answered '{measure}', so the "
+                        f"answer could be guessed from the kind of data alone")
+if choosing.pick(1204).key != choosing.pick(1204).key:
+    problems.append("a code does not give back the same situation")
+first = bank[0]
+if first.statements(1204) != first.statements(1204):
+    problems.append("the statements are ordered differently on each run, so one code "
+                    "does not give two students the same question")
+if sorted(first.statements(1204)) != sorted([first.reason, *first.distractors]):
+    problems.append("ordering the statements loses or adds one")
+if first.statements(1204) == first.statements(1205):
+    problems.append("the statements sit in the same order whatever the code, so the "
+                    "position of the answer could be learned rather than the answer")
+print(f"choosing: {len(bank)} situations, {spread}, each checked against its own data")
+
+at = open_page("choosing")
+complain("choosing load", at)
+seed = at.session_state["ct-choose"]["seed"]
+situation = choosing.pick(seed)
+prefix = f"ct-choose:{situation.key}:{seed}"
+at.radio(key=f"{prefix}:measure").set_value(situation.answer).run()
+at.radio(key=f"{prefix}:reason").set_value(situation.reason).run()
+at.button(key=f"{prefix}:mark").click().run()
+complain("choosing mark", at)
+banner = " ".join(m.value for m in at.success)
+if "2 out of 2" not in banner:
+    problems.append(f"choosing: the right measure with the right reason scored "
+                    f"{banner!r}")
+
+at = open_page("choosing")
+seed = at.session_state["ct-choose"]["seed"]
+situation = choosing.pick(seed)
+prefix = f"ct-choose:{situation.key}:{seed}"
+wrong_measure = next(m for m in choosing.MEASURES if m != situation.answer)
+at.radio(key=f"{prefix}:measure").set_value(wrong_measure).run()
+at.radio(key=f"{prefix}:reason").set_value(situation.distractors[0]).run()
+at.button(key=f"{prefix}:mark").click().run()
+complain("choosing wrong", at)
+if not at.error:
+    problems.append("choosing: a wrong measure with an uncreditable reason was not "
+                    "marked wrong")
+
+at = open_page("choosing")
+seed = at.session_state["ct-choose"]["seed"]
+situation = choosing.pick(seed)
+prefix = f"ct-choose:{situation.key}:{seed}"
+at.radio(key=f"{prefix}:measure").set_value(situation.answer).run()
+at.button(key=f"{prefix}:mark").click().run()
+if not at.warning:
+    problems.append("choosing: a measure offered with no reason was marked instead "
+                    "of being sent back, though the reason carries its own mark")
+print("choosing: both marks for a right answer, none for a wrong one, and a measure "
+      "offered without a reason is not marked")
 
 print()
 if problems:
