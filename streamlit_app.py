@@ -44,6 +44,12 @@ for topic in registry.topics():
         for page in topic.pages
     ]
 
+for extra in registry.standalone():
+    sections[extra.section] = [
+        st.Page(extra.render, title=extra.title, icon=extra.icon,
+                url_path=extra.key)
+    ]
+
 current = st.navigation(sections, position="sidebar", expanded=True)
 
 scoring.tally_sidebar()

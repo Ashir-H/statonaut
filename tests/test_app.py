@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
-from app import registry  # noqa: E402
+from app import form, registry  # noqa: E402
 from app.core import scoring  # noqa: E402
 from app.topics.sampling import engine, generate, views  # noqa: E402
 
@@ -73,6 +73,12 @@ for topic, page in registry.pages():
     if path in seen:
         problems.append(f"address '{path}' is used by {seen[path]} as well")
     seen[path] = f"{topic.key}/{page.key}"
+for extra in registry.standalone():
+    if "/" in extra.key:
+        problems.append(f"address '{extra.key}': Streamlit has no nested pathnames")
+    if extra.key in seen:
+        problems.append(f"address '{extra.key}' is used by {seen[extra.key]} as well")
+    seen[extra.key] = f"standalone/{extra.key}"
 print(f"addresses: {len(seen)} unique page paths, all single segment")
 
 # 3. a second topic must not break the sidebar or the addresses
@@ -95,6 +101,48 @@ for topic, page in registry.pages():
     print(f"renders: {topic.key}/{page.key:9} "
           f"{len(at.button)} buttons, {len(at.text_input)} text inputs, "
           f"{len(at.number_input)} numbers")
+
+
+# 4b. a page belonging to no topic still has to render, and this one is a frame
+# around somebody else's page, so it also has to cope with that page not
+# arriving
+def open_standalone(key):
+    script = (
+        "import sys\n"
+        f"sys.path.insert(0, {str(ROOT / 'src')!r})\n"
+        "from app import registry\n"
+        f"page = next(p for p in registry.standalone() if p.key == {key!r})\n"
+        "page.render()\n"
+    )
+    return AppTest.from_string(script, default_timeout=90).run()
+
+
+for extra in registry.standalone():
+    at = open_standalone(extra.key)
+    complain(f"standalone page '{extra.title}'", at)
+    if not at.header:
+        problems.append(f"'{extra.title}' has no heading of its own, so it opens on "
+                        f"somebody else's form with nothing to say what it is")
+    print(f"renders: {extra.key} under '{extra.section}'")
+
+# Streamlit cannot measure a page from another origin, so a height of "content"
+# silently becomes 400px, which cuts this four-field form in half.
+if not isinstance(form.HEIGHT, int):
+    problems.append("the feedback frame states no height, so Streamlit falls back "
+                    "to 400px and cuts the form off")
+for url in (form.EMBED, form.DIRECT):
+    if not url.startswith("https://"):
+        problems.append(f"the feedback form is reached over plain http: {url}")
+at = open_standalone("submit-feedback")
+said = " ".join(c.value for c in at.caption)
+if form.DIRECT not in said:
+    problems.append("the feedback page offers no way through if the frame does not "
+                    "load, which a school network blocking the domain would cause")
+if "optional" not in said.lower():
+    problems.append("the feedback page does not say the e-mail box is optional, "
+                    "though it asks a student for an address")
+print(f"feedback: {form.HEIGHT}px stated, https, a link out if the frame fails, "
+      "and the e-mail box declared optional")
 
 # 5. the drill: answer every number of a table correctly, then start another
 for kind in views.TABLE_KINDS:

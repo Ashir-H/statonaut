@@ -43,6 +43,34 @@ class Topic:
         return next(p for p in self.pages if p.key == key)
 
 
+@dataclass(frozen=True)
+class Standalone:
+    """A page belonging to no topic: it teaches nothing and has no unit.
+
+    Listed here for the same reason the topics are: so that a page cannot
+    appear in the sidebar without the addresses and the tests knowing about it.
+    """
+
+    key: str                      # unique; becomes the whole address
+    section: str                   # the sidebar heading it sits under
+    title: str
+    render: Callable[[], None]
+    icon: str = ""
+
+
+def standalone() -> List[Standalone]:
+    """Every page that is not part of a topic."""
+    from .form import render as feedback
+
+    return [
+        Standalone(key="submit-feedback",
+                   section="Report an issue or an idea",
+                   title="Submit feedback",
+                   render=feedback,
+                   icon=":material/feedback:"),
+    ]
+
+
 def topics() -> List[Topic]:
     """Every topic in the app, in teaching order."""
     from .topics.central_tendency.topic import TOPIC as central_tendency
