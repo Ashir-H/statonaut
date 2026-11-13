@@ -37,7 +37,7 @@ def walk_steps(answers) -> List[Dict]:
     steps.append({
         "kind": "sigma_fx", "row": None, "want": float(answers.sigma_fx),
         "ask": f"Add the {FX} column. What is {SIGMA_FX}?",
-        "why": "Add the column you have just built, not the x column.",
+        "why": "Add the column just built, not the x column.",
     })
     steps.append({
         "kind": "sigma_f", "row": None, "want": float(answers.sigma_f),
@@ -135,7 +135,7 @@ def page_walkthrough() -> None:
     st.progress(state["step"] / len(steps),
                 text=f"Step {state['step'] + 1} of {len(steps)}")
     st.markdown("**" + step["ask"] + "**")
-    typed = st.text_input("Your answer", key=f"ct-walk:{signature}:{state['step']}",
+    typed = st.text_input("Answer", key=f"ct-walk:{signature}:{state['step']}",
                           label_visibility="collapsed", placeholder="Type a number")
     if st.button("Check", key=f"ct-walk:check:{state['step']}"):
         given = as_number(typed)

@@ -15,7 +15,7 @@ and no middle colour, but there is a most popular one.
 **From a list**, count how many times each value appears, then give the value
 with the highest count. Give the value itself, not how many times it occurred.
 
-**From a frequency table**, the counting has already been done for you. Find the
+**From a frequency table**, the counting has already been done. Find the
 largest number in the frequency column and give the $x$ value on that row.
 
 ## When it is used
@@ -23,7 +23,7 @@ largest number in the frequency column and give the $x$ value on that row.
 The mode is the right measure when the data is not numerical, and when the
 question is really about which option is most popular: a shop deciding how much
 of each size to order wants the modal size, because the mean size is of no use
-when you are buying stock.
+when stock is being bought.
 
 Its weakness is that it ignores every value except the most common one, so it
 can sit at one end of the data rather than anywhere near the middle. A past
@@ -36,9 +36,8 @@ because every value occurs once.
 
 ## How it is marked
 
-One mark, and it is asked for considerably less often than the median or the
-mean. When it is asked for, the data always has one value occurring more often
-than any other, so you will not have to decide what to do about a tie.
+One mark. Where two values share the highest frequency the data has no single
+mode, and the question of which of them to name does not arise.
 
 The answer is the value. Writing down the frequency instead is the usual way the
 mark is lost, and it happens most often when the counting was done in a rough

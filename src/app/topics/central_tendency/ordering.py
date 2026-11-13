@@ -79,7 +79,7 @@ _HINTS = {
     LEARN: ("Smallest first. Drag a value, or focus one and use the left and "
             "right arrow keys."),
     WORKING: ("Smallest first. Drag a value, or focus one and use the arrow keys. "
-              "Nothing here is marked - type your answers below."),
+              "Nothing here is marked; the answers are typed below."),
 }
 
 

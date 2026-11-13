@@ -46,8 +46,8 @@ it still earns the mark — but an unordered list earns nothing, however good th
 final answer looks.
 
 For a table, the mark schemes ask for the position to be identified, in words
-like "identify the 20th item", and then for the value. So write the position
-down before you go looking for it in the running total.
+like "identify the 20th item", and then for the value. The position is
+therefore written down before it is sought in the running total.
 
 Giving the position instead of the value is the other common loss. With nine
 values the median is the fifth value in the ordered list, not 5.

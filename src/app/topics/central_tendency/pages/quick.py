@@ -95,7 +95,7 @@ def page_quick() -> None:
     st.markdown(f"**{prompt(ask)}**")
 
     if state["answered"] is None:
-        typed = st.text_input("Your answer", key=f"ct-quick:{seed}",
+        typed = st.text_input("Answer", key=f"ct-quick:{seed}",
                               label_visibility="collapsed",
                               placeholder="Type a number")
         if st.button("Check", key=f"ct-quick:check:{seed}", type="primary"):
