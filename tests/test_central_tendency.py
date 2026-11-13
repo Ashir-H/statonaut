@@ -264,7 +264,8 @@ def complain(where, at):
 topic = next(t for t in registry.topics() if t.key == "central-tendency")
 if topic.unit != "Unit 5":
     problems.append(f"the topic is registered as {topic.unit}, not Unit 5")
-expected_pages = ["notes", "walkthrough", "choosing", "change", "practice"]
+expected_pages = ["notes", "walkthrough", "choosing", "change", "backwards",
+                  "practice"]
 if [p.key for p in topic.pages] != expected_pages:
     problems.append(f"expected {expected_pages}, "
                     f"not {[p.key for p in topic.pages]}")
@@ -590,6 +591,110 @@ if not at.warning:
                     "sent back")
 print("change: three marks for three right verdicts, none for three wrong, and a "
       "part-answered question is not marked")
+
+# ---- 11. working backwards --------------------------------------------------
+
+from app.topics.central_tendency.engine import Row  # noqa: E402
+
+check("the mean of 12 parcels, totalled",
+      engine.shown(engine.total_from_mean(2.4, 12)), "28.8")
+check("the one mark not given",
+      engine.missing_value([12, 14, 15, 18], 15, 5), 16.0)
+known_rows = [Row(0, 6), Row(2, 4), Row(3, 5), Row(4, 2)]
+check("the known rows total", (sum(r.f for r in known_rows),
+                               sum(r.fx for r in known_rows)), (17, 31))
+recovered = engine.missing_frequency(known_rows, 1, 1.5)
+check("the one frequency not given", recovered, 11.0)
+check("and then the table totals",
+      (sum(r.f for r in known_rows) + recovered,
+       sum(r.fx for r in known_rows) + recovered), (28.0, 42.0))
+check("two groups combined", engine.combined_mean(18, 62, 12, 70), 65.2)
+check("and the second group recovered",
+      engine.other_group_mean(18, 62, 30, 65.2), 70.0)
+print("backwards: every figure recorded in the unit notes is reproduced")
+
+broken = []
+shapes = {shape: 0 for shape in generate.BACKWARDS}
+for seed in range(1000, 2200):
+    question = generate.build("backwards", seed)
+    shapes[question["shape"]] += 1
+    if question["relation"] not in question["options"]:
+        broken.append((seed, "the right relationship is not offered"))
+    if len(set(question["options"])) != 4:
+        broken.append((seed, "the four relationships are not distinct"))
+    if question["answer"] <= 0:
+        broken.append((seed, f"the answer is {question['answer']}"))
+    if question["shape"] == "frequency":
+        rows = [Row(x, f) for x, f in question["rows"]]
+        hidden = question["hidden"]
+        rest = [row for index, row in enumerate(rows) if index != hidden]
+        back = engine.missing_frequency(rest, rows[hidden].x,
+                                       engine.solve_table(rows).mean)
+        if abs(back - question["answer"]) > 1e-6:
+            broken.append((seed, "the stated k is not what the equation gives"))
+if broken:
+    problems.append(f"{len(broken)} backwards question(s) do not hold: {broken[:3]}")
+for shape, count in shapes.items():
+    if count < 100:
+        problems.append(f"only {count} question(s) of shape '{shape}' in 1200 seeds")
+print(f"backwards: 1200 questions, {shapes}, each solvable by its own relationship")
+
+# The error the papers punish most often must be on offer every time: taking
+# the average of the two means as though the groups were the same size. Read
+# off the generator's own constants rather than written out again here, so the
+# check cannot drift from the thing it is checking.
+combined_wrong = generate.RELATIONS["combined"][1]
+if not any("m_1 + m_2" in option for option in combined_wrong):
+    problems.append("the combined-mean relationships do not include the average "
+                    "of the two means, which is the error most often made")
+combined_seed = next(seed for seed in range(1000, 2200)
+                     if generate.build("backwards", seed)["shape"] == "combined")
+offered = generate.build("backwards", combined_seed)["options"]
+if not any("m_1 + m_2" in option for option in offered):
+    problems.append("a combined-mean question does not offer that error among "
+                    "its four relationships")
+
+at = open_page("backwards")
+complain("backwards load", at)
+seed = at.session_state["ct-back"]["seed"]
+question = generate.build("backwards", seed)
+prefix = f"ct-back:{seed}"
+right_letter = "ABCD"[question["options"].index(question["relation"])]
+at.radio(key=f"{prefix}:relation").set_value(right_letter).run()
+at.text_input(key=f"{prefix}:answer").set_value(engine.shown(question["answer"])).run()
+at.button(key=f"{prefix}:mark").click().run()
+complain("backwards mark", at)
+banner = " ".join(m.value for m in at.success)
+if "2 out of 2" not in banner:
+    problems.append(f"backwards: the right relationship and answer scored {banner!r}")
+
+at = open_page("backwards")
+seed = at.session_state["ct-back"]["seed"]
+question = generate.build("backwards", seed)
+prefix = f"ct-back:{seed}"
+wrong_letter = next(letter for letter, option
+                    in zip("ABCD", question["options"])
+                    if option != question["relation"])
+at.radio(key=f"{prefix}:relation").set_value(wrong_letter).run()
+at.text_input(key=f"{prefix}:answer").set_value(
+    engine.shown(question["answer"] + 1)).run()
+at.button(key=f"{prefix}:mark").click().run()
+complain("backwards wrong", at)
+if not at.error:
+    problems.append("backwards: a wrong relationship with a wrong answer was not "
+                    "marked wrong")
+
+at = open_page("backwards")
+seed = at.session_state["ct-back"]["seed"]
+question = generate.build("backwards", seed)
+at.text_input(key=f"ct-back:{seed}:answer").set_value(
+    engine.shown(question["answer"])).run()
+at.button(key=f"ct-back:{seed}:mark").click().run()
+if not at.warning:
+    problems.append("backwards: an answer with no relationship was marked, though "
+                    "the relationship carries the method mark")
+print("backwards: both marks for the relationship and the answer together, and an "
+      "answer offered without a relationship is not marked")
 
 print()
 if problems:

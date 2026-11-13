@@ -318,3 +318,51 @@ def solve_table(rows: Sequence[Row]) -> TableAnswers:
         median=median_of(expand(table)),
         mean=sigma_fx / sigma_f,
     )
+
+
+# ------------------------------------- questions that give a measure already
+
+
+def total_from_mean(mean: float, count: int) -> float:
+    """The total of a set of values, from its mean and how many there are."""
+    return mean * count
+
+
+def missing_value(known: Sequence[int], mean: float, count: int) -> float:
+    """The one value not given, from the mean of them all."""
+    return mean * count - sum(known)
+
+
+def missing_frequency(rows: Sequence[Row], x: int, mean: float) -> float:
+    """The one frequency not given, from the mean of the whole table.
+
+    Solving sigma fx = mean times sigma f for the unknown frequency k, where k
+    belongs to the value x:
+
+        sigma fx + k x = mean (sigma f + k)
+        k (x - mean) = mean sigma f - sigma fx
+    """
+    known_f = sum(row.f for row in rows)
+    known_fx = sum(row.fx for row in rows)
+    if abs(x - mean) < 1e-12:
+        raise ValueError("the unknown frequency belongs to the mean itself, so the "
+                         "equation says nothing about it")
+    return (mean * known_f - known_fx) / (x - mean)
+
+
+def combined_mean(first_size: int, first_mean: float,
+                  second_size: int, second_mean: float) -> float:
+    """The mean of two groups taken together."""
+    total = first_size + second_size
+    if total == 0:
+        raise ValueError("two empty groups have no mean")
+    return (first_size * first_mean + second_size * second_mean) / total
+
+
+def other_group_mean(first_size: int, first_mean: float,
+                     whole_size: int, whole_mean: float) -> float:
+    """The mean of the second group, from the combined mean and the first."""
+    second_size = whole_size - first_size
+    if second_size <= 0:
+        raise ValueError("the first group is the whole group")
+    return (whole_mean * whole_size - first_size * first_mean) / second_size

@@ -230,12 +230,158 @@ def verdicts(question: Dict) -> Dict[str, str]:
     return engine.effect(question["values"], question["after"])
 
 
+# ----------------------------------- questions that give a measure already
+
+BACKWARDS = ("total", "missing", "frequency", "combined")
+
+# The relationship a question of each shape turns on, with three that look
+# like it. The first distractor for a combined mean is the error the papers
+# punish most often: averaging the two means as though the groups were the
+# same size.
+RELATIONS: Dict[str, Tuple[str, List[str]]] = {
+    "total": (
+        r"\text{total} = \text{mean} \times n",
+        [r"\text{total} = \frac{\text{mean}}{n}",
+         r"\text{total} = \text{mean} + n",
+         r"n = \text{mean} \times \text{total}"],
+    ),
+    "missing": (
+        r"x = \text{mean} \times n - \Sigma(\text{the values given})",
+        [r"x = \text{mean} \times n + \Sigma(\text{the values given})",
+         r"x = \frac{\Sigma(\text{the values given})}{n}",
+         r"x = \text{mean} - \Sigma(\text{the values given})"],
+    ),
+    "frequency": (
+        r"\Sigma fx = \text{mean} \times \Sigma f",
+        [r"\Sigma fx = \text{mean} \times \text{number of rows}",
+         r"k = \text{mean} \times \Sigma f",
+         r"\Sigma f = \text{mean} \times \Sigma fx"],
+    ),
+    "combined": (
+        r"\text{mean} = \frac{n_1 m_1 + n_2 m_2}{n_1 + n_2}",
+        [r"\text{mean} = \frac{m_1 + m_2}{2}",
+         r"\text{mean} = \frac{n_1 + n_2}{m_1 + m_2}",
+         r"\text{mean} = n_1 m_1 + n_2 m_2"],
+    ),
+}
+
+PARCELS = [("parcels", "kg"), ("sacks of flour", "kg"), ("crates", "kg"),
+           ("bottles", "litres")]
+
+
+def _tenths(value: float) -> bool:
+    """Whether a figure can be written with at most one decimal place."""
+    return abs(value * 10 - round(value * 10)) < 1e-9
+
+
+def _total_question(rng: random.Random) -> Dict:
+    count = rng.choice([8, 10, 12, 15, 20])
+    mean = rng.choice([1.5, 2.4, 3.5, 4.2, 5.6, 6.5])
+    noun, unit = rng.choice(PARCELS)
+    return {
+        "setting": f"The mean mass of {count} {noun} is {mean} {unit}.",
+        "task": f"Find the total mass of the {noun}.",
+        "answer": engine.total_from_mean(mean, count),
+        "unit": unit,
+    }
+
+
+def _missing_question(rng: random.Random) -> Dict:
+    for _ in range(200):
+        count = rng.choice([5, 6, 7])
+        mean = rng.randint(10, 18)
+        known = [rng.randint(8, 20) for _ in range(count - 1)]
+        missing = engine.missing_value(known, mean, count)
+        if not 1 <= missing <= 25 or missing in (0,):
+            continue
+        return {
+            "setting": f"{count} candidates sat a test. The marks of "
+                       f"{count - 1} of them were "
+                       f"{', '.join(str(v) for v in known)}. The mean mark of all "
+                       f"{count} candidates was {mean}.",
+            "task": "Find the mark of the remaining candidate.",
+            "answer": float(missing),
+            "unit": "",
+        }
+    raise RuntimeError("could not compose a missing-value question")
+
+
+def _frequency_question(rng: random.Random) -> Dict:
+    for _ in range(300):
+        width = rng.choice([4, 5])
+        xs = list(range(width))
+        hidden = rng.randrange(width)
+        k = rng.randint(3, 14)
+        fs = [rng.randint(2, 10) for _ in xs]
+        fs[hidden] = k
+        rows = [Row(x, f) for x, f in zip(xs, fs)]
+        whole = engine.solve_table(rows)
+        if not _tenths(whole.mean) or whole.mean == xs[hidden]:
+            continue
+        known = [row for index, row in enumerate(rows) if index != hidden]
+        recovered = engine.missing_frequency(known, xs[hidden], whole.mean)
+        if abs(recovered - k) > 1e-6:
+            continue
+        return {
+            "setting": "The table shows the number of goals scored in a number of "
+                       "matches. One frequency is not given.",
+            "task": f"The mean number of goals is {engine.shown(whole.mean)}. "
+                    f"Find the value of k.",
+            "answer": float(k),
+            "unit": "",
+            "rows": [(row.x, row.f) for row in rows],
+            "hidden": hidden,
+        }
+    raise RuntimeError("could not compose a missing-frequency question")
+
+
+def _combined_question(rng: random.Random) -> Dict:
+    for _ in range(300):
+        first, second = rng.randint(10, 25), rng.randint(10, 25)
+        first_mean, second_mean = rng.randint(50, 80), rng.randint(50, 80)
+        if first_mean == second_mean:
+            continue
+        whole = engine.combined_mean(first, first_mean, second, second_mean)
+        if not _tenths(whole):
+            continue
+        return {
+            "setting": f"One group of {first} students has a mean mark of "
+                       f"{first_mean}. A second group of {second} students has a "
+                       f"mean mark of {second_mean}.",
+            "task": "Find the mean mark of all the students together.",
+            "answer": whole,
+            "unit": "",
+        }
+    raise RuntimeError("could not compose a combined-mean question")
+
+
+_BACKWARDS_BUILDERS = {
+    "total": _total_question,
+    "missing": _missing_question,
+    "frequency": _frequency_question,
+    "combined": _combined_question,
+}
+
+
+def backwards_question(seed: int) -> Dict:
+    rng = random.Random(seed * 41 + 13)
+    shape = rng.choice(BACKWARDS)
+    built = _BACKWARDS_BUILDERS[shape](rng)
+    right, wrong = RELATIONS[shape]
+    options = [right, *wrong]
+    random.Random(seed * 17 + 5).shuffle(options)
+    built.update({"kind": "backwards", "shape": shape, "seed": seed,
+                  "relation": right, "options": options})
+    return built
+
+
 # ------------------------------------------------------------------ the gate
 
 BUILDERS = {
     "list": list_question,
     "table": table_question,
     "change": change_question,
+    "backwards": backwards_question,
 }
 
 
