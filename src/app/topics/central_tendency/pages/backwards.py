@@ -59,11 +59,11 @@ def _question(question: Dict, seed: int) -> None:
         scoring.show_outcome(remembered["parts"])
         return
 
-    st.markdown("**Which relationship does the question turn on?**")
+    st.markdown("**Which equation is needed to find the answer?**")
     st.markdown("\n".join(
         f"- **{letter}** — {maths.inline(option)}"
         for letter, option in zip(LETTERS, question["options"])))
-    letter = st.radio("Relationship", LETTERS, index=None, horizontal=True,
+    letter = st.radio("Equation", LETTERS, index=None, horizontal=True,
                       key=f"{prefix}:relation")
     typed = st.text_input("Answer", key=f"{prefix}:answer",
                           placeholder="Type a number")
@@ -71,12 +71,12 @@ def _question(question: Dict, seed: int) -> None:
     if not st.button("Mark my answer", key=f"{prefix}:mark", type="primary"):
         return
     if letter is None or as_number(typed) is None:
-        st.warning("Select a relationship and give an answer, then mark it.")
+        st.warning("Select an equation and give an answer, then mark it.")
         return
 
     chosen = question["options"][LETTERS.index(letter)]
     parts = [
-        scoring.part("Relationship", _award(chosen == question["relation"]),
+        scoring.part("Equation", _award(chosen == question["relation"]),
                      maths.inline(question["relation"]), maths=True),
         scoring.part("Answer",
                      _award(engine.agrees(question["answer"], as_number(typed))),
