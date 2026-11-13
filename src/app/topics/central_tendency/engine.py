@@ -28,7 +28,7 @@ place.
 import math
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 # ------------------------------------------------------------------- numbers
 
@@ -194,6 +194,43 @@ def solve_list(values: Sequence[int]) -> ListAnswers:
         total=sum(data),
         spread=max(data) - min(data),
     )
+
+
+# ------------------------------------------- what an alteration does to each
+
+INCREASES = "increases"
+DECREASES = "decreases"
+UNCHANGED = "no change"
+UNKNOWN = "not enough information"
+
+VERDICTS = (INCREASES, DECREASES, UNCHANGED, UNKNOWN)
+
+
+def direction(before: float, after: float) -> str:
+    if abs(after - before) < 1e-9:
+        return UNCHANGED
+    return INCREASES if after > before else DECREASES
+
+
+def effect(before: Sequence[int], after: Sequence[int]) -> Dict[str, str]:
+    """What an alteration does to each of the three measures.
+
+    Computed from the data on both sides rather than reasoned about. Whether
+    the median moves when one value is added depends on the values themselves,
+    and a rule of thumb applied to the wrong list is how an app comes to mark a
+    correct answer wrong.
+    """
+    first, second = solve_list(before), solve_list(after)
+    if first.mode is None or second.mode is None:
+        raise ValueError("no single mode on one side, so no verdict can be stated")
+    return {"mode": direction(first.mode, second.mode),
+            "median": direction(first.median, second.median),
+            "mean": direction(first.mean, second.mean)}
+
+
+def unknown_effect() -> Dict[str, str]:
+    """Every verdict withheld, for an alteration that is not fully described."""
+    return {measure: UNKNOWN for measure in ("mode", "median", "mean")}
 
 
 # --------------------------------------------------- an ungrouped frequency table

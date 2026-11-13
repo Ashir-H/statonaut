@@ -144,11 +144,98 @@ def table_question(seed: int) -> Dict:
     }
 
 
+# ------------------------------------------------- an alteration to the data
+
+CHANGE_CONTEXTS: Sequence[Tuple[str, str]] = [
+    ("The number of books borrowed by each of {n} students was recorded.",
+     "Books borrowed"),
+    ("A shop recorded the number of complaints received on each of {n} days.",
+     "Complaints"),
+    ("{n} members of a club recorded the number of events they attended.",
+     "Events attended"),
+    ("The number of goals scored in each of {n} matches was recorded.",
+     "Goals scored"),
+    ("{n} candidates sat a short test marked out of twelve.", "Marks"),
+]
+
+
+def _described_change(rng: random.Random, values: List[int]):
+    """One alteration, described in words, with the altered list beside it.
+
+    An alteration is only offered if a single mode survives it. Where the
+    highest frequency becomes shared, no verdict about the mode can be stated,
+    and no mark scheme covers that case.
+    """
+    answers = engine.solve_list(values)
+    kinds = ["add", "add", "remove", "shift", "scale", "unknown"]
+    rng.shuffle(kinds)
+    for kind in kinds:
+        if kind == "add":
+            # A value chosen to make the verdicts worth thinking about: equal
+            # to the mean leaves the mean alone, above everything raises all
+            # three, equal to the mode leaves the mode alone.
+            candidates = [int(answers.mean)] if answers.mean == int(answers.mean) else []
+            candidates += [max(values) + rng.randint(4, 20), answers.mode,
+                           int(answers.median)]
+            value = rng.choice([c for c in candidates if c >= 0])
+            after = values + [value]
+            description = f"A further value of {value} is recorded."
+        elif kind == "remove":
+            value = rng.choice(sorted(set(values)))
+            after = list(values)
+            after.remove(value)
+            description = f"One value of {value} is removed."
+        elif kind == "shift":
+            step = rng.choice([2, 3, 5, 10])
+            if rng.random() < 0.5 and min(values) > step:
+                after = [v - step for v in values]
+                description = f"Every value is decreased by {step}."
+            else:
+                after = [v + step for v in values]
+                description = f"Every value is increased by {step}."
+        elif kind == "scale":
+            factor = rng.choice([2, 3])
+            after = [v * factor for v in values]
+            description = f"Every value is multiplied by {factor}."
+        else:
+            return ("A further value is recorded, but its size is not stated.",
+                    [], False)
+        if len(after) < 3 or engine.mode_of(after) is None:
+            continue
+        return description, after, True
+    return ("A further value is recorded, but its size is not stated.", [], False)
+
+
+def change_question(seed: int) -> Dict:
+    rng = random.Random(seed * 37 + 3)
+    setting, label = rng.choice(CHANGE_CONTEXTS)
+    values = _list_values(rng, rng.choice([7, 8, 9]))
+    description, after, told = _described_change(rng, values)
+    return {
+        "kind": "change",
+        "seed": seed,
+        "setting": setting.format(n=len(values)),
+        "label": label,
+        "values": values,
+        "change": description,
+        "after": after,
+        "told": told,
+    }
+
+
+def verdicts(question: Dict) -> Dict[str, str]:
+    """What the alteration does to each measure, or that it cannot be said."""
+    if not question["told"]:
+        return engine.unknown_effect()
+    return engine.effect(question["values"], question["after"])
+
+
 # ------------------------------------------------------------------ the gate
 
 BUILDERS = {
     "list": list_question,
     "table": table_question,
+    "change": change_question,
 }
 
 

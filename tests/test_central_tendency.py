@@ -264,8 +264,9 @@ def complain(where, at):
 topic = next(t for t in registry.topics() if t.key == "central-tendency")
 if topic.unit != "Unit 5":
     problems.append(f"the topic is registered as {topic.unit}, not Unit 5")
-if [p.key for p in topic.pages] != ["notes", "walkthrough", "choosing", "practice"]:
-    problems.append(f"expected notes, walkthrough, choosing and practice, "
+expected_pages = ["notes", "walkthrough", "choosing", "change", "practice"]
+if [p.key for p in topic.pages] != expected_pages:
+    problems.append(f"expected {expected_pages}, "
                     f"not {[p.key for p in topic.pages]}")
 
 at = open_page("notes")
@@ -506,6 +507,89 @@ if not at.warning:
                     "of being sent back, though the reason carries its own mark")
 print("choosing: both marks for a right answer, none for a wrong one, and a measure "
       "offered without a reason is not marked")
+
+# ---- 10. the effect of a change ---------------------------------------------
+
+# The alterations recorded in the unit notes, with the answers they record.
+books = [3, 4, 4, 4, 6, 7, 9, 11]
+stickers = [3, 3, 3, 5, 6, 7, 8]
+for label, before, after, want in [
+    ("add 20", books, books + [20],
+     {"mode": engine.UNCHANGED, "median": engine.INCREASES,
+      "mean": engine.INCREASES}),
+    ("add 6", books, books + [6],
+     {"mode": engine.UNCHANGED, "median": engine.INCREASES,
+      "mean": engine.UNCHANGED}),
+    ("remove 11", books, [v for v in books if v != 11],
+     {"mode": engine.UNCHANGED, "median": engine.DECREASES,
+      "mean": engine.DECREASES}),
+    ("plus 3", books, [v + 3 for v in books],
+     {"mode": engine.INCREASES, "median": engine.INCREASES,
+      "mean": engine.INCREASES}),
+    ("doubled", books, [v * 2 for v in books],
+     {"mode": engine.INCREASES, "median": engine.INCREASES,
+      "mean": engine.INCREASES}),
+    ("stickers, add 5", stickers, stickers + [5],
+     {"mode": engine.UNCHANGED, "median": engine.UNCHANGED,
+      "mean": engine.UNCHANGED}),
+]:
+    check(f"effect, {label}", engine.effect(before, after), want)
+check("an undescribed change withholds every verdict",
+      set(engine.unknown_effect().values()), {engine.UNKNOWN})
+print("effect: every alteration recorded in the unit notes is reproduced")
+
+unusable = []
+for seed in range(1000, 2200):
+    question = generate.build("change", seed)
+    verdicts = generate.verdicts(question)
+    if set(verdicts) != {"mode", "median", "mean"}:
+        unusable.append((seed, "a measure has no verdict"))
+    if question["told"] and engine.mode_of(question["after"]) is None:
+        unusable.append((seed, "the mode is shared after the change, which no mark "
+                               "scheme covers"))
+    if not question["told"] and set(verdicts.values()) != {engine.UNKNOWN}:
+        unusable.append((seed, "a verdict is stated for a change that was not "
+                               "fully described"))
+if unusable:
+    problems.append(f"{len(unusable)} alteration(s) cannot be marked: {unusable[:3]}")
+print("effect: 1200 generated alterations, every one with three statable verdicts")
+
+at = open_page("change")
+complain("change load", at)
+seed = at.session_state["ct-change"]["seed"]
+question = generate.build("change", seed)
+answers = generate.verdicts(question)
+prefix = f"ct-change:{seed}"
+for measure in ("mode", "median", "mean"):
+    at.radio(key=f"{prefix}:{measure}").set_value(answers[measure]).run()
+at.button(key=f"{prefix}:mark").click().run()
+complain("change mark", at)
+banner = " ".join(m.value for m in at.success)
+if "3 out of 3" not in banner:
+    problems.append(f"change: the right verdicts scored {banner!r}")
+
+at = open_page("change")
+seed = at.session_state["ct-change"]["seed"]
+answers = generate.verdicts(generate.build("change", seed))
+prefix = f"ct-change:{seed}"
+for measure in ("mode", "median", "mean"):
+    wrong = next(v for v in engine.VERDICTS if v != answers[measure])
+    at.radio(key=f"{prefix}:{measure}").set_value(wrong).run()
+at.button(key=f"{prefix}:mark").click().run()
+complain("change wrong", at)
+if not at.error:
+    problems.append("change: three wrong verdicts were not marked wrong")
+
+at = open_page("change")
+seed = at.session_state["ct-change"]["seed"]
+answers = generate.verdicts(generate.build("change", seed))
+at.radio(key=f"ct-change:{seed}:mode").set_value(answers["mode"]).run()
+at.button(key=f"ct-change:{seed}:mark").click().run()
+if not at.warning:
+    problems.append("change: one verdict out of three was marked instead of being "
+                    "sent back")
+print("change: three marks for three right verdicts, none for three wrong, and a "
+      "part-answered question is not marked")
 
 print()
 if problems:
