@@ -262,8 +262,8 @@ def complain(where, at):
 
 
 topic = next(t for t in registry.topics() if t.key == "central-tendency")
-if topic.unit != "Unit 5":
-    problems.append(f"the topic is registered as {topic.unit}, not Unit 5")
+if topic.unit != "Unit 4":
+    problems.append(f"the topic is registered as {topic.unit}, not Unit 4")
 expected_pages = ["notes", "walkthrough", "quick", "choosing", "change",
                   "backwards", "practice"]
 if [p.key for p in topic.pages] != expected_pages:

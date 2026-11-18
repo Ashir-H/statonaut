@@ -14,7 +14,7 @@ from .pages import (backwards, change, choose, notes, practice, quick,
 TOPIC = Topic(
     key="central-tendency",
     title="The mode, the median and the mean",
-    unit="Unit 5",
+    unit="Unit 4",
     unit_title="Measures of central tendency",
     syllabus="4.1 and 4.4",
     summary="The three measures of central tendency: what each one means, how it "
