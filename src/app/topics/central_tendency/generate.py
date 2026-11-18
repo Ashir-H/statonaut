@@ -224,9 +224,13 @@ def change_question(seed: int) -> Dict:
 
 
 def verdicts(question: Dict) -> Dict[str, str]:
-    """What the alteration does to each measure, or that it cannot be said."""
+    """What the alteration does to each measure, or that it cannot be said.
+
+    Where the further value is not stated, the verdicts are still worked out
+    one measure at a time: some of them are settled whatever is added.
+    """
     if not question["told"]:
-        return engine.unknown_effect()
+        return engine.effect_of_one_more(question["values"])
     return engine.effect(question["values"], question["after"])
 
 

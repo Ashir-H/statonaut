@@ -535,25 +535,79 @@ for label, before, after, want in [
       "mean": engine.UNCHANGED}),
 ]:
     check(f"effect, {label}", engine.effect(before, after), want)
-check("an undescribed change withholds every verdict",
-      set(engine.unknown_effect().values()), {engine.UNKNOWN})
 print("effect: every alteration recorded in the unit notes is reproduced")
 
+# Where the size of the further value is not stated, some verdicts are still
+# settled, and withholding all three marks a correct answer wrong.
+check("the mode's lead over the next value",
+      engine.modal_lead([9, 13, 11, 9, 9, 11, 9]), 2)
+check("a lead of two cannot be overtaken",
+      engine.mode_survives_one_more([9, 13, 11, 9, 9, 11, 9]), True)
+check("a lead of one can be drawn level with",
+      engine.mode_survives_one_more([3, 3, 4, 4, 4, 5]), False)
+check("three equal values across an odd middle hold it",
+      engine.median_survives_one_more([1, 5, 5, 5, 9]), True)
+check("two equal values across an even middle hold it",
+      engine.median_survives_one_more([1, 2, 5, 5, 8, 9]), True)
+check("otherwise the middle can be moved",
+      engine.median_survives_one_more([9, 9, 9, 9, 11, 11, 13]), False)
+check("the mean is never settled by a value of unstated size",
+      engine.effect_of_one_more([1, 5, 5, 5, 9])["mean"], engine.UNKNOWN)
+
+# The question that showed this up: 9 occurs four times against 11 twice, so no
+# single further value can displace it, but the median can still be moved.
+reported = generate.verdicts(generate.build("change", 1040))
+check("code 1040, the mode", reported["mode"], engine.UNCHANGED)
+check("code 1040, the median", reported["median"], engine.UNKNOWN)
+check("code 1040, the mean", reported["mean"], engine.UNKNOWN)
+print("effect: a settled verdict is stated even when the further value is not")
+
+def _ever_moves(values, measure):
+    """Whether one further value could move this measure, found by trying them.
+
+    An independent check on the engine's reasoning: every value from below the
+    smallest to above the largest is added in turn and the measure recomputed.
+    A mode that ceases to be single counts as moved, since no mark scheme
+    covers a tie.
+    """
+    base = engine.solve_list(values)
+    for candidate in range(min(values) - 3, max(values) + 4):
+        after = engine.solve_list(list(values) + [candidate])
+        if measure == "mode":
+            if after.mode is None or after.mode != base.mode:
+                return True
+        elif measure == "median":
+            if abs(after.median - base.median) > 1e-9:
+                return True
+        elif abs(after.mean - base.mean) > 1e-9:
+            return True
+    return False
+
+
 unusable = []
+untold = 0
 for seed in range(1000, 2200):
     question = generate.build("change", seed)
     verdicts = generate.verdicts(question)
     if set(verdicts) != {"mode", "median", "mean"}:
         unusable.append((seed, "a measure has no verdict"))
-    if question["told"] and engine.mode_of(question["after"]) is None:
-        unusable.append((seed, "the mode is shared after the change, which no mark "
-                               "scheme covers"))
-    if not question["told"] and set(verdicts.values()) != {engine.UNKNOWN}:
-        unusable.append((seed, "a verdict is stated for a change that was not "
-                               "fully described"))
+    if question["told"]:
+        if engine.mode_of(question["after"]) is None:
+            unusable.append((seed, "the mode is shared after the change, which no "
+                                   "mark scheme covers"))
+        continue
+    untold += 1
+    for measure in ("mode", "median", "mean"):
+        wanted = (engine.UNKNOWN if _ever_moves(question["values"], measure)
+                  else engine.UNCHANGED)
+        if verdicts[measure] != wanted:
+            unusable.append((seed, f"{measure} marked as {verdicts[measure]!r} "
+                                   f"where trying every value gives {wanted!r}"))
 if unusable:
-    problems.append(f"{len(unusable)} alteration(s) cannot be marked: {unusable[:3]}")
-print("effect: 1200 generated alterations, every one with three statable verdicts")
+    problems.append(f"{len(unusable)} alteration(s) are marked wrongly: "
+                    f"{unusable[:3]}")
+print(f"effect: 1200 generated alterations, and for the {untold} whose further "
+      f"value is unstated, every verdict agrees with trying every value")
 
 at = open_page("change")
 complain("change load", at)

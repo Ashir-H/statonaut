@@ -52,10 +52,7 @@ def _before_and_after(question: Dict) -> None:
     """The three measures on each side, once the answer has been marked."""
     before = engine.solve_list(question["values"])
     if not question["told"]:
-        st.caption("The size of the further value is not stated, so no measure can "
-                   "be said to rise, fall or hold. Before the change the mode is "
-                   f"{before.mode}, the median is {engine.shown(before.median)} and "
-                   f"the mean is {value_text(before.mean)}.")
+        _why_each(question, before)
         return
     after = engine.solve_list(question["after"])
     rows = ["| Measure | Before | After |", "| --- | --- | --- |",
@@ -64,6 +61,37 @@ def _before_and_after(question: Dict) -> None:
             f"{engine.shown(after.median)} |",
             f"| Mean | {value_text(before.mean)} | {value_text(after.mean)} |"]
     st.markdown("\n".join(rows))
+
+
+def _why_each(question: Dict, before) -> None:
+    """Why each verdict stands, where the further value is not stated.
+
+    Two of the three can be settled, and a student who answered "not enough
+    information" to all of them deserves to be shown which ones were decidable
+    and on what grounds.
+    """
+    values = question["values"]
+    lines = []
+    if engine.mode_survives_one_more(values):
+        lead = engine.modal_lead(values)
+        lines.append(f"- The mode stays {before.mode}, which occurs {lead} more "
+                     f"times than any other value. One further value adds at most "
+                     f"one to a rival, which leaves it short.")
+    else:
+        lines.append(f"- The mode is in doubt: {before.mode} occurs only one more "
+                     f"time than the next commonest value, so a further value could "
+                     f"draw level with it and leave no single mode.")
+    if engine.median_survives_one_more(values):
+        lines.append(f"- The median stays {engine.shown(before.median)}, because "
+                     f"the values across the middle are equal. The middle shifts by "
+                     f"half a place, but it shifts onto the same value.")
+    else:
+        lines.append("- The median is in doubt: a value added below the middle "
+                     "moves it one way and a value added above it moves it the "
+                     "other.")
+    lines.append(f"- The mean is in doubt: a value above {value_text(before.mean)} "
+                 f"would raise it and a value below would lower it.")
+    st.markdown("\n".join(lines))
 
 
 def _question(question: Dict, seed: int) -> None:

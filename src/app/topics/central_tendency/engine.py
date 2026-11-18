@@ -228,9 +228,74 @@ def effect(before: Sequence[int], after: Sequence[int]) -> Dict[str, str]:
             "mean": direction(first.mean, second.mean)}
 
 
-def unknown_effect() -> Dict[str, str]:
-    """Every verdict withheld, for an alteration that is not fully described."""
-    return {measure: UNKNOWN for measure in ("mode", "median", "mean")}
+def modal_lead(values: Sequence[int]) -> int:
+    """How far ahead the commonest value is of the next commonest.
+
+    Zero where no value is commonest on its own.
+    """
+    tally = sorted((frequency for _, frequency in counts(values)), reverse=True)
+    if not tally:
+        return 0
+    if len(tally) == 1:
+        return tally[0]
+    if tally[0] == tally[1]:
+        return 0
+    return tally[0] - tally[1]
+
+
+def mode_survives_one_more(values: Sequence[int]) -> bool:
+    """Whether the mode must be unchanged by one further value of any size.
+
+    One further value adds at most one to the count of a single rival. Where
+    the mode leads by two or more, that rival is still short of it, so the mode
+    is unchanged whatever is added - including another of the mode itself,
+    which raises its count without changing which value it is. Where the lead
+    is one, a rival can draw level and the data is left with no single mode, so
+    nothing can be promised.
+    """
+    return mode_of(values) is not None and modal_lead(values) >= 2
+
+
+def median_survives_one_more(values: Sequence[int]) -> bool:
+    """Whether the median must be unchanged by one further value of any size.
+
+    Adding a value moves the middle by half a place, so which values the median
+    is read from shifts by one.
+
+    Where there is an even number of values, the median lies between the two
+    that straddle the middle, and after the addition it becomes one of those
+    two, or the added value if it falls between them. So the median is fixed
+    exactly when those two values are equal.
+
+    Where there is an odd number, the median is a single value and afterwards
+    it is the mean of two neighbouring ones. That can only come out at the old
+    median if the values on both sides of it are equal to it as well - three
+    equal values across the middle.
+    """
+    data = sorted(values)
+    count = len(data)
+    if count < 2:
+        return False
+    half = count // 2
+    if count % 2 == 0:
+        return data[half - 1] == data[half]
+    return data[half - 1] == data[half] == data[half + 1]
+
+
+def effect_of_one_more(values: Sequence[int]) -> Dict[str, str]:
+    """What one further value of unstated size does to each measure.
+
+    Not every verdict is withheld, which is the whole point of asking. The mode
+    cannot be displaced where it leads by two, and the median cannot be moved
+    where the values across the middle are equal. The mean is always in doubt:
+    a value above it raises it and a value below it lowers it, and nothing in
+    the question says which.
+    """
+    return {
+        "mode": UNCHANGED if mode_survives_one_more(values) else UNKNOWN,
+        "median": UNCHANGED if median_survives_one_more(values) else UNKNOWN,
+        "mean": UNKNOWN,
+    }
 
 
 # --------------------------------------------------- an ungrouped frequency table
